@@ -9,8 +9,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <string>
 
 #define BUF 1024
+
+enum commands {
+	SEND = 1,
+	LIST,
+	READ,
+	DEL,
+	QUIT = -1
+};
 
 namespace fs = std::filesystem;
 
@@ -183,34 +192,47 @@ void *clientCommunication(void *data)
 		}
 
 		// remove ugly debug message, because of the sent newline of client
-		if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
-		{
+		if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n') {
 			size -= 2;
-		}
-		else if (buffer[size - 1] == '\n')
-		{
+		} else if (buffer[size - 1] == '\n') {
 			--size;
 		}
 
 		buffer[size] = '\0';
 		printf("Message received: %s\n", buffer); // ignore error
 
-		if (send(*current_socket, "OK", 3, 0) == -1)
-		{
+		/* New code here for handling requests */
+
+		enum commands cmd;
+
+		// can't wait for reflections (maybe c++26?)
+		if (strcasecmp(buffer, "SEND") == 0) cmd = SEND;
+		else if (strcasecmp(buffer, "LIST") == 0) cmd = LIST;
+		else if (strcasecmp(buffer, "READ") == 0) cmd = READ;
+		else if (strcasecmp(buffer, "DEL") == 0) cmd = DEL;
+		else if (strcasecmp(buffer, "QUIT") == 0) cmd = QUIT;
+
+		switch (cmd) {
+			case SEND:
+			case LIST:
+			case READ:
+			case DEL:
+			case QUIT:
+				break;
+			}
+
+		if (send(*current_socket, "OK", 3, 0) == -1) {
 			perror("send answer failed");
 			return NULL;
 		}
 	} while (strcmp(buffer, "quit") != 0 && !abortRequested);
 
 	// closes/frees the descriptor if not already
-	if (*current_socket != -1)
-	{
-		if (shutdown(*current_socket, SHUT_RDWR) == -1)
-		{
+	if (*current_socket != -1) {
+		if (shutdown(*current_socket, SHUT_RDWR) == -1) {
 			perror("shutdown new_socket");
 		}
-		if (close(*current_socket) == -1)
-		{
+		if (close(*current_socket) == -1) {
 			perror("close new_socket");
 		}
 		*current_socket = -1;
@@ -221,15 +243,9 @@ void *clientCommunication(void *data)
 
 void signalHandler(int sig)
 {
-	if (sig == SIGINT)
-	{
+	if (sig == SIGINT) {
 		printf("abort Requested... "); // ignore error
 		abortRequested = 1;
-		/////////////////////////////////////////////////////////////////////////
-		// With shutdown() one can initiate normal TCP close sequence ignoring
-		// the reference count.
-		// https://beej.us/guide/bgnet/html/#close-and-shutdownget-outta-my-face
-		// https://linux.die.net/man/3/shutdown
 		if (new_socket != -1)
 		{
 			if (shutdown(new_socket, SHUT_RDWR) == -1)
@@ -243,21 +259,16 @@ void signalHandler(int sig)
 			new_socket = -1;
 		}
 
-		if (create_socket != -1)
-		{
-			if (shutdown(create_socket, SHUT_RDWR) == -1)
-			{
+		if (create_socket != -1) {
+			if (shutdown(create_socket, SHUT_RDWR) == -1) {
 				perror("shutdown create_socket");
 			}
-			if (close(create_socket) == -1)
-			{
+			if (close(create_socket) == -1) {
 				perror("close create_socket");
 			}
 			create_socket = -1;
 		}
-	}
-	else
-	{
+	} else {
 		exit(sig);
 	}
 }
