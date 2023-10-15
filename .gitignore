@@ -1,5 +1,9 @@
 twmailer-server
 twmailer-client
+spool
+
+.cache
+compile_commands.json
 
 # Prerequisites
 *.d

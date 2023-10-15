@@ -1,4 +1,5 @@
 #include "user.h"
+#include "user_handler.h"
 
 #include <cstddef>
 #include <cstdio>
@@ -34,6 +35,8 @@ inline bool isInteger(const std::string & s);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
+user_handler* user_handler::instancePtr = nullptr;
+
 int main (int argc, char* argv[])
 {
 	if (argc < 3 ||	
@@ -43,6 +46,12 @@ int main (int argc, char* argv[])
 		printUsage();
 		return EXIT_FAILURE;
 	}
+
+	fs::path spool_dir;
+	user_handler::getInstance()->setSpoolDir(spool_dir = fs::path(argv[2]));
+
+	fs::create_directory(spool_dir/"users");
+	fs::create_directory(spool_dir/"messages");
 
 	char* p;
 	u_long PORT = strtoul(argv[1], &p, 10);
