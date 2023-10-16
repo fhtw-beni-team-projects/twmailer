@@ -12,14 +12,13 @@ namespace fs = std::filesystem;
 template <typename  T>
 static const bool ptr_cmp = [](T* left, T* right) { return *left < *right; };
 
-typedef  std::set<mail*, decltype(ptr_cmp<int>)> maillist;
+typedef std::set<mail*, decltype(ptr_cmp<int>)> maillist;
 
 class user {
 public:
 
-	user(fs::path);
-	user(std::string name)
-	: name(name) {};
+	user(fs::path user_data);
+	user(std::string name, fs::path user_dir);
 	
 	~user();
 
