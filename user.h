@@ -14,7 +14,7 @@ using json = nlohmann::json;
 template <typename T>
 static const bool ptr_cmp(T* left, T* right) { return *left < *right; };
 
-typedef std::set<mail*, decltype(ptr_cmp<mail*>)*> maillist;
+typedef std::set<mail*, decltype(ptr_cmp<mail>)*> maillist;
 
 class user {
 public:
