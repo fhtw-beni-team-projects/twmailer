@@ -57,5 +57,5 @@ void user::sendMail(mail* mail, std::vector<std::string> recipients)
 mail* user::getMail(u_int id) 
 {
 	maillist::iterator it = std::find_if(this->mails.begin(), this->mails.end(), [id](auto& i){ return (*i)(id); });
-	return it == this->mails.end() ? nullptr : *it;
+	return it == this->mails.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it;
 }
