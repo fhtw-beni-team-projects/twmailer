@@ -25,4 +25,4 @@ $(BUILD_DIR)/%.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f twmailer-client twmailer-server
+	rm -rf $(BUILD_DIR) twmailer-client twmailer-server

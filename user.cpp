@@ -1,5 +1,6 @@
 #include "user.h"
 #include "user_handler.h"
+#include "mail.h"
 
 #include <fstream>
 #include <string>
