@@ -1,6 +1,8 @@
 #include "user.h"
 #include "user_handler.h"
 
+#include "readline.h"
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <cstddef>
 #include <cstdio>
@@ -78,8 +80,7 @@ int main (int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	{
+	if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket error"); // errno set by socket()
 		return EXIT_FAILURE;
 	}
@@ -88,8 +89,7 @@ int main (int argc, char* argv[])
 						SOL_SOCKET,
 						SO_REUSEADDR,
 						&reuseValue,
-						sizeof(reuseValue)) == -1)
-	{
+						sizeof(reuseValue)) == -1) {
 		perror("set socket options - reuseAddr");
 		return EXIT_FAILURE;
 	}
@@ -98,8 +98,7 @@ int main (int argc, char* argv[])
 						SOL_SOCKET,
 						SO_REUSEPORT,
 						&reuseValue,
-						sizeof(reuseValue)) == -1)
-	{
+						sizeof(reuseValue)) == -1) {
 		perror("set socket options - reusePort");
 		return EXIT_FAILURE;
 	}
@@ -109,34 +108,27 @@ int main (int argc, char* argv[])
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(PORT);
 
-	if (bind(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1)
-	{
+	if (bind(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1) {
 		perror("bind error");
 		return EXIT_FAILURE;
 	}
 
-	if (listen(create_socket, 5) == -1)
-	{
+	if (listen(create_socket, 5) == -1) {
 		perror("listen error");
 		return EXIT_FAILURE;
 	}
 
-	while (!abortRequested)
-	{
-
+	while (!abortRequested) {
 		printf("Waiting for connections...\n");
 
 		addrlen = sizeof(struct sockaddr_in);
 		if ((new_socket = accept(create_socket,
 										 (struct sockaddr *)&cliaddress,
-										 &addrlen)) == -1)
-		{
-			if (abortRequested)
-			{
+										 &addrlen)) == -1) {
+			if (abortRequested) {
 				perror("accept error after aborted");
 			}
-			else
-			{
+			else {
 				perror("accept error");
 			}
 			break;
@@ -150,14 +142,11 @@ int main (int argc, char* argv[])
 	}
 
 
-	if (create_socket != -1)
-	{
-		if (shutdown(create_socket, SHUT_RDWR) == -1)
-		{
+	if (create_socket != -1) {
+		if (shutdown(create_socket, SHUT_RDWR) == -1) {
 			perror("shutdown create_socket");
 		}
-		if (close(create_socket) == -1)
-		{
+		if (close(create_socket) == -1) {
 			perror("close create_socket");
 		}
 		create_socket = -1;
