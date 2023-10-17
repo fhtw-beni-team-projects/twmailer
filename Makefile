@@ -1,5 +1,7 @@
 CC = g++
-CFLAGS = -std=c++20 -Wall -Werror -fsanitize=address
+ASAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
+CFLAGS := -std=c++20 -Wall -lssl -lcrypto
+LDFLAGS   += -lpthread
 
 TARGET = client server
 BUILD_DIR = build
@@ -16,10 +18,10 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 client: $(OBJS_CLIENT)
-	$(CC) $(CFLAGS) -o twmailer-client $^
+	$(CC) $(CFLAGS) $(ASAN_FLAGS) -o twmailer-client $^
 
 server: $(OBJS_SERVER)
-	$(CC) $(CFLAGS) -o twmailer-server $^
+	$(CC) $(CFLAGS) $(ASAN_FLAGS) -o twmailer-server $^
 
 $(BUILD_DIR)/%.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@

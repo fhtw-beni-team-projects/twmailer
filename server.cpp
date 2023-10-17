@@ -1,6 +1,7 @@
 #include "user.h"
 #include "user_handler.h"
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -9,12 +10,15 @@
 #include <fstream>
 
 #include <nlohmann/json.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/compute/detail/sha1.hpp>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #define BUF 1024
 
@@ -215,18 +219,30 @@ void *clientCommunication(void *data)
 		}
 
 		buffer[size] = '\0';
-		printf("Message received: %s\n", buffer); // ignore error
+
+
+
 
 		/* New code here for handling requests */
+		
+
+		std::stringstream ss(buffer);
+		std::string line;
+
+		std::vector<std::string> message;
+
+		while (std::getline(ss, line, '\n')) {
+			message.push_back(line);
+		}
 
 		enum commands cmd;
 
 		// can't wait for reflections (maybe c++26?)
-		if (strcasecmp(buffer, "SEND") == 0) cmd = SEND;
-		else if (strcasecmp(buffer, "LIST") == 0) cmd = LIST;
-		else if (strcasecmp(buffer, "READ") == 0) cmd = READ;
-		else if (strcasecmp(buffer, "DEL") == 0) cmd = DEL;
-		else if (strcasecmp(buffer, "QUIT") == 0) cmd = QUIT;
+		if (boost::iequals(message.at(0), "SEND")) cmd = SEND;
+		else if (boost::iequals(message.at(0), "LIST")) cmd = LIST;
+		else if (boost::iequals(message.at(0), "READ")) cmd = READ;
+		else if (boost::iequals(message.at(0), "DEL")) cmd = DEL;
+		else if (boost::iequals(message.at(0), "QUIT")) cmd = QUIT;
 
 		switch (cmd) {
 			case SEND:
