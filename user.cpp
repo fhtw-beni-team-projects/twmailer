@@ -7,16 +7,17 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <map>
 
 using json = nlohmann::json;
 
 user::user(fs::path user_data_json)
 {
 	std::ifstream ifs(user_data_json);
-	json user = json::parse(ifs);
+	json user_data = json::parse(ifs);
 
-	this->name = user["name"];
-	for ( auto& mail_json : user["mails"]["received"] ) {
+	this->name = user_data["name"];
+	for ( auto& mail_json : user_data["mails"]["received"] ) {
 		mail* mail = new struct mail(
 			mail_json["filename"],
 			mail_json["timestamp"],
@@ -28,6 +29,22 @@ user::user(fs::path user_data_json)
 		
 		this->inbox.insert(mail);
 	}
+
+	for ( auto& mail_json : user_data["mails"]["sent"] ) {
+		mail* mail = new struct mail(
+			mail_json["filename"],
+			mail_json["timestamp"],
+			mail_json["subject"]
+		);
+		mail->id = mail_json["id"];
+		mail->sender = mail_json["sender"];
+		mail->recipients = mail_json["recipients"].get<std::vector<std::string>>();
+		
+		this->sent.insert(mail);
+	}
+
+	this->user_data = user_data;
+	this->file_location = user_data_json;
 }
 
 user::user(std::string name, fs::path user_dir)
@@ -54,8 +71,6 @@ void user::addMail(mail* mail)
 
 	this->inbox.insert(mail);
 	this->user_data["mails"]["received"][std::to_string(mail->id)] = mail->mailToJson();
-
-	printf("%s\n", this->user_data.dump().c_str());
 }
 
 void user::sendMail(mail* mail, std::vector<std::string> recipients) 
@@ -70,6 +85,9 @@ void user::sendMail(mail* mail, std::vector<std::string> recipients)
 	mail->sender = this->name;
 	mail->recipients = recipients;
 
+	mail->id = this->sent.size();
+
+	this->sent.insert(mail);
 	this->user_data["mails"]["sent"][std::to_string(mail->id)] = mail->mailToJson();
 
 	for ( auto& user : users ) {
@@ -85,6 +103,7 @@ mail* user::getMail(u_int id)
 
 void user::saveToFile()
 {
-	std::ofstream ofs(this->file_location);
-	ofs << this->user_data;
+	printf("%s\n", this->user_data.dump().c_str());
+	std::fstream fs(this->file_location);
+	fs << this->user_data.dump();
 }

@@ -1,6 +1,6 @@
 CC = g++
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
-CFLAGS := -g -std=c++20 -Wall -lssl -lcrypto
+CFLAGS := -g -std=c++20 -Wall
 LDFLAGS   += -fsanitize=address -lpthread
 
 TARGET = client server

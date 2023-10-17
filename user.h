@@ -6,8 +6,6 @@
 #include <set>
 #include <vector>
 
-#include <nlohmann/json.hpp>
-
 struct comp {
 	bool operator()(mail* left, mail* right) const { return *left < *right; };
 };
@@ -37,5 +35,5 @@ private:
 
 	std::string name;
 	maillist inbox;
-
+	maillist sent;
 };

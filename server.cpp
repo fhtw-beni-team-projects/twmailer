@@ -248,7 +248,7 @@ void *clientCommunication(void *data)
 				}
 
 				user_handler::getInstance()->getUser(lines.at(1))->sendMail(
-					new struct mail(saveToFile(user_handler::getInstance()->getSpoolDir()/"messages", lines.at(4)), std::time(0), lines.at(3)),
+					new struct mail(saveToFile(user_handler::getInstance()->getSpoolDir()/"messages", lines.at(4)), lines.at(3)),
 					{lines.at(2)}
 				);
 

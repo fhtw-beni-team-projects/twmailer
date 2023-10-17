@@ -1,5 +1,11 @@
 #include "mail.h"
 
+mail::mail(std::string filename, std::string subject) :
+	filename(filename),
+	timestamp(std::time(NULL)),
+	subject(subject)
+{}
+
 mail::mail(std::string filename, int64_t timestamp, std::string subject) :
 	filename(filename),
 	timestamp(timestamp),
@@ -25,14 +31,14 @@ void mail::remove()
 
 json mail::mailToJson()
 {
-	json json;
+	json jsonfile;
 
-	json["id"] = this->id;
-	json["timestamp"] = this->timestamp;
-	json["sender"] = this->sender;
-	json["recipients"] = this->recipients;
-	json["subject"] = this->subject;
-	json["filename"] = this->filename;
+	jsonfile["id"] = this->id;
+	jsonfile["timestamp"] = this->timestamp;
+	jsonfile["sender"] = this->sender;
+	jsonfile["recipients"] = this->recipients;
+	jsonfile["subject"] = this->subject;
+	jsonfile["filename"] = this->filename;
 
-	return json;
+	return jsonfile;
 }
