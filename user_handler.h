@@ -1,10 +1,10 @@
 #pragma once
 
-#include "user.h"
-
 #include <filesystem>
 #include <map>
 #include <string>
+
+class user;
 
 namespace fs = std::filesystem;
 

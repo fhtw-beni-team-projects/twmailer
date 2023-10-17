@@ -1,20 +1,18 @@
 #pragma once
 
+#include "mail.h"
+
 #include <string>
 #include <set>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
-namespace fs = std::filesystem;
-using json = nlohmann::json;
+struct comp {
+	bool operator()(mail* left, mail* right) const { return *left < *right; };
+};
 
-struct mail;
-
-template <typename T>
-static const bool ptr_cmp(T* left, T* right) { return *left < *right; };
-
-typedef std::set<mail*, decltype(ptr_cmp<mail>)*> maillist;
+typedef std::set<mail*, comp> maillist;
 
 class user {
 public:

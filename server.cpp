@@ -49,7 +49,6 @@ std::string get_sha1(const std::string& p_arg);
 
 // from myserver.c
 void *clientCommunication(void *data);
-inline std::string recvToStr(int __fd, size_t __n, int __flags);
 void signalHandler(int sig);
 
 inline void exiting();
@@ -193,15 +192,31 @@ void *clientCommunication(void *data)
 	}
 
 	do {
-		std::string message;
-		try {
-			message = recvToStr(*current_socket, BUF - 1, 0);
-		}
-		catch(...) {
+		size = recv(*current_socket, buffer, BUF - 1, 0);
+		if (size == -1) {
+			if (abortRequested) {
+				perror("recv error after aborted");
+			} else {
+				perror("recv error");
+			}
 			break;
-		}		
+		}
 
-		std::stringstream ss(message.c_str());
+		if (size == 0) {
+			printf("Client closed remote socket\n"); // ignore error
+			break;
+		}
+
+		// remove ugly debug message, because of the sent newline of client
+		if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n') {
+			size -= 2;
+		} else if (buffer[size - 1] == '\n') {
+			--size;
+		}
+
+		buffer[size] = '\0';
+
+		std::stringstream ss(buffer);
 		std::string line;
 
 		std::vector<std::string> lines;
@@ -219,27 +234,17 @@ void *clientCommunication(void *data)
 		else if (boost::iequals(lines.at(0), "DEL")) cmd = DEL;
 		else if (boost::iequals(lines.at(0), "QUIT")) cmd = QUIT;
 
-		if (cmd == SEND && !boost::equals(lines.back(), ".\n")) {
-			try {
-				message.append(recvToStr(*current_socket, BUF - 1, 0));
-				std::stringstream ss(message.c_str()); // inefficient to repeat
-				std::string line;
-
-				lines.clear();
-				while (std::getline(ss, line, '\n')) {
-					lines.push_back(line);
-				}
-			}
-			catch(...) {
-				break;
-			}
-		}
-
 		switch (cmd) {
 			case SEND:
 				if (lines.at(3).length() > 80) {
 					// send error
 					break;
+				}
+
+				if (lines.size() > 5) {
+					for (std::vector<std::string>::iterator it = lines.begin() + 5; it != lines.end() && *it != "."; it++) {
+						lines.at(4).append("\n").append(*it);
+					}
 				}
 
 				user_handler::getInstance()->getUser(lines.at(1))->sendMail(
@@ -274,38 +279,6 @@ void *clientCommunication(void *data)
 	}
 
 	return NULL;
-}
-
-inline std::string recvToStr(int __fd, size_t __n, int __flags)
-{
-	char buffer[BUF];
-	int size;
-
-	size = recv(__fd, buffer, __n, __flags);
-	if (size == -1) {
-		if (abortRequested) {
-			perror("recv error after aborted");
-		} else {
-			perror("recv error");
-		}
-		throw std::exception().what();
-	}
-
-	if (size == 0) {
-		printf("Client closed remote socket\n"); // ignore error
-		throw std::exception().what();
-	}
-
-	// remove ugly debug message, because of the sent newline of client
-	if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n') {
-		size -= 2;
-	} else if (buffer[size - 1] == '\n') {
-		--size;
-	}
-
-	buffer[size] = '\0';
-
-	return buffer;
 }
 
 void signalHandler(int sig)
@@ -370,5 +343,5 @@ std::string get_sha1(const std::string& p_arg)
 inline void exiting()
 {
 	user_handler::getInstance()->saveAll();
-	printf("Saving...\n");
+	printf("Saving...	\n");
 }

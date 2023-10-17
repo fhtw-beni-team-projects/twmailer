@@ -2,12 +2,14 @@
 
 #include "user_handler.h"
 
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <vector>
 #include <filesystem>
 #include <fstream>
 
 namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 struct mail {
 	std::string filename;
