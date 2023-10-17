@@ -38,9 +38,9 @@ user::~user() {
 
 void user::addMail(mail* mail) 
 {
-	mail->id = this->mails.size();
+	mail->id = this->inbox.size();
 
-	this->mails.insert(mail);
+	this->inbox.insert(mail);
 	this->user_data["mails"]["received"][std::to_string(mail->id)] = mail->mailToJson();
 }
 
@@ -65,8 +65,8 @@ void user::sendMail(mail* mail, std::vector<std::string> recipients)
 
 mail* user::getMail(u_int id) 
 {
-	maillist::iterator it = std::find_if(this->mails.begin(), this->mails.end(), [id](auto& i){ return (*i)(id); });
-	return it == this->mails.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it;
+	maillist::iterator it = std::find_if(this->inbox.begin(), this->inbox.end(), [id](auto& i){ return (*i)(id); });
+	return it == this->inbox.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it;
 }
 
 void user::saveToFile()

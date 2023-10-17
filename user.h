@@ -28,7 +28,7 @@ public:
 	void sendMail(mail* mail, std::vector<std::string> recipients);
 
 	mail* getMail(u_int id);
-	maillist getMails() { return this->mails; };
+	maillist getMails() { return this->inbox; };
 
 	void saveToFile();
 	
@@ -38,6 +38,6 @@ private:
 	json user_data;
 
 	std::string name;
-	maillist mails;
+	maillist inbox;
 
 };
