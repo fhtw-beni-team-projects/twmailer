@@ -26,7 +26,7 @@ public:
 
 	void setSpoolDir(fs::path p) { this->spool_dir = p; };
 	fs::path getSpoolDir() { return this->spool_dir; };
-	user* getUser(std::string name) { return this->users[name]; };
+	user* getUser(std::string name);
 
 private:
 

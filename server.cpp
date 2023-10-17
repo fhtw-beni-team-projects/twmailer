@@ -1,16 +1,19 @@
 #include "user.h"
 #include "user_handler.h"
 
-#include "readline.h"
+#include "mail.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 
+#include <locale>
 #include <nlohmann/json.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/compute/detail/sha1.hpp>
@@ -41,11 +44,12 @@ int new_socket = -1;
 void printUsage();
 inline bool isInteger(const std::string & s);
 
-void saveToFile(fs::path object_dir, std::string message);
+std::string saveToFile(fs::path object_dir, std::string message);
 std::string get_sha1(const std::string& p_arg);
 
 // from myserver.c
 void *clientCommunication(void *data);
+inline std::string recvToStr(int __fd, size_t __n, int __flags);
 void signalHandler(int sig);
 
 user_handler* user_handler::instancePtr = nullptr;
@@ -185,56 +189,61 @@ void *clientCommunication(void *data)
 	}
 
 	do {
-		size = recv(*current_socket, buffer, BUF - 1, 0);
-		if (size == -1) {
-			if (abortRequested) {
-				perror("recv error after aborted");
-			} else {
-				perror("recv error");
-			}
+		std::string message;
+		try {
+			message = recvToStr(*current_socket, BUF - 1, 0);
+		}
+		catch(...) {
 			break;
-		}
+		}		
 
-		if (size == 0) {
-			printf("Client closed remote socket\n"); // ignore error
-			break;
-		}
-
-		// remove ugly debug message, because of the sent newline of client
-		if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n') {
-			size -= 2;
-		} else if (buffer[size - 1] == '\n') {
-			--size;
-		}
-
-		buffer[size] = '\0';
-
-
-
-
-		/* New code here for handling requests */
-		
-
-		std::stringstream ss(buffer);
+		std::stringstream ss(message.c_str());
 		std::string line;
 
-		std::vector<std::string> message;
-
+		std::vector<std::string> lines;
 		while (std::getline(ss, line, '\n')) {
-			message.push_back(line);
+			lines.push_back(line);
 		}
+
 
 		enum commands cmd;
 
 		// can't wait for reflections (maybe c++26?)
-		if (boost::iequals(message.at(0), "SEND")) cmd = SEND;
-		else if (boost::iequals(message.at(0), "LIST")) cmd = LIST;
-		else if (boost::iequals(message.at(0), "READ")) cmd = READ;
-		else if (boost::iequals(message.at(0), "DEL")) cmd = DEL;
-		else if (boost::iequals(message.at(0), "QUIT")) cmd = QUIT;
+		if (boost::iequals(lines.at(0), "SEND")) cmd = SEND;
+		else if (boost::iequals(lines.at(0), "LIST")) cmd = LIST;
+		else if (boost::iequals(lines.at(0), "READ")) cmd = READ;
+		else if (boost::iequals(lines.at(0), "DEL")) cmd = DEL;
+		else if (boost::iequals(lines.at(0), "QUIT")) cmd = QUIT;
+
+		if (cmd == SEND && !boost::equals(lines.back(), ".\n")) {
+			try {
+				message.append(recvToStr(*current_socket, BUF - 1, 0));
+				std::stringstream ss(message.c_str()); // inefficient to repeat
+				std::string line;
+
+				lines.clear();
+				while (std::getline(ss, line, '\n')) {
+					lines.push_back(line);
+				}
+			}
+			catch(...) {
+				break;
+			}
+		}
 
 		switch (cmd) {
 			case SEND:
+				if (lines.at(3).length() > 80) {
+					// send error
+					break;
+				}
+
+				user_handler::getInstance()->getUser(lines.at(1))->sendMail(
+					new struct mail(saveToFile(user_handler::getInstance()->getSpoolDir()/"messages", lines.at(4)), std::time(0), lines.at(3)),
+					{lines.at(2)}
+				);
+
+				break;
 			case LIST:
 			case READ:
 			case DEL:
@@ -246,6 +255,7 @@ void *clientCommunication(void *data)
 			perror("send answer failed");
 			return NULL;
 		}
+
 	} while (strcmp(buffer, "quit") != 0 && !abortRequested);
 
 	// closes/frees the descriptor if not already
@@ -260,6 +270,38 @@ void *clientCommunication(void *data)
 	}
 
 	return NULL;
+}
+
+inline std::string recvToStr(int __fd, size_t __n, int __flags)
+{
+	char buffer[BUF];
+	int size;
+
+	size = recv(__fd, buffer, __n, __flags);
+	if (size == -1) {
+		if (abortRequested) {
+			perror("recv error after aborted");
+		} else {
+			perror("recv error");
+		}
+		throw std::exception().what();
+	}
+
+	if (size == 0) {
+		printf("Client closed remote socket\n"); // ignore error
+		throw std::exception().what();
+	}
+
+	// remove ugly debug message, because of the sent newline of client
+	if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n') {
+		size -= 2;
+	} else if (buffer[size - 1] == '\n') {
+		--size;
+	}
+
+	buffer[size] = '\0';
+
+	return buffer;
 }
 
 void signalHandler(int sig)
@@ -294,11 +336,12 @@ void signalHandler(int sig)
 	}
 }
 
-void saveToFile(fs::path object_dir, std::string message)
+std::string saveToFile(fs::path object_dir, std::string message)
 {
 	std::string sha1 = get_sha1(message);
 	std::ofstream ofs(object_dir/sha1); // possible issues with path length or file length limitations
 	ofs << message;
+	return sha1;
 }
 
 // https://stackoverflow.com/questions/28489153/how-to-portably-compute-a-sha1-hash-in-c

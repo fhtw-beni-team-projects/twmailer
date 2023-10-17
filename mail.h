@@ -19,6 +19,8 @@ struct mail {
 	std::vector<std::string> recipients;
 	std::string subject;
 
+	mail(std::string filename, int64_t timestamp, std::string subject);
+
 	bool operator()(const u_int& id) const {
 		return id == this->id;
 	}
@@ -27,17 +29,7 @@ struct mail {
 		return this->timestamp < left.timestamp;
 	}
 
-	fs::path getPath() {
-		if (this->filename.empty())
-			return fs::path();
-		return fs::path(this->filename.insert(2, "/"));
-	};
+	fs::path getPath() { return this->filename; };
 
-	void remove() {
-		if (this->filename.empty())
-			return;
-		std::remove((user_handler::getInstance()->getSpoolDir()/"objects"/fs::path(this->filename.insert(2, "/"))).c_str());
-
-		this->filename = "";
-	};
+	void remove();
 };

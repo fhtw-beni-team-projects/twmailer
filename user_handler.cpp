@@ -1,5 +1,7 @@
 #include "user_handler.h"
+#include "user.h"
 
+#include <filesystem>
 #include <string>
 
 user_handler::user_handler()
@@ -9,4 +11,14 @@ user_handler::user_handler()
 			this->users.insert(std::pair<std::string, user*>(fs::path(entry.path()).replace_extension(), new user(entry)));
 		}
 	}
+}
+
+user* user_handler::getUser(std::string name)
+{
+	if (this->users.find(name) == this->users.end()) {
+		this->users[name] = fs::exists(this->spool_dir/"users"/(name+".json")) ?
+			new user(this->spool_dir/"users"/(name+".json")) :
+			new user(name, this->spool_dir/"users");
+	}
+	return this->users[name]; 
 }
