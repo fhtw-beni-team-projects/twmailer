@@ -15,7 +15,6 @@
 
 #include <locale>
 #include <nlohmann/json.hpp>
-#include <boost/algorithm/string.hpp>
 #include <boost/compute/detail/sha1.hpp>
 
 #include <netinet/in.h>
@@ -191,6 +190,8 @@ void *clientCommunication(void *data)
 		return NULL;
 	}
 
+	std::string incomplete_message;
+
 	do {
 		size = recv(*current_socket, buffer, BUF - 1, 0);
 		if (size == -1) {
@@ -216,7 +217,7 @@ void *clientCommunication(void *data)
 
 		buffer[size] = '\0';
 
-		std::stringstream ss(buffer);
+		std::stringstream ss(incomplete_message.append(buffer));
 		std::string line;
 
 		std::vector<std::string> lines;
@@ -233,9 +234,15 @@ void *clientCommunication(void *data)
 		else if (boost::iequals(lines.at(0), "READ")) cmd = READ;
 		else if (boost::iequals(lines.at(0), "DEL")) cmd = DEL;
 		else if (boost::iequals(lines.at(0), "QUIT")) cmd = QUIT;
+		else continue; // TODO: error message
 
 		switch (cmd) {
 			case SEND:
+				if (lines.size() < 5 || lines.back().compare(".") != 0) {
+					incomplete_message = buffer;
+					continue; // issues if command end is never received
+				}
+
 				if (lines.at(3).length() > 80) {
 					// send error
 					break;
