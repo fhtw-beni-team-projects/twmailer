@@ -31,5 +31,7 @@ struct mail {
 
 	fs::path getPath() { return this->filename; };
 
+	json mailToJson();
+
 	void remove();
 };

@@ -52,6 +52,8 @@ void *clientCommunication(void *data);
 inline std::string recvToStr(int __fd, size_t __n, int __flags);
 void signalHandler(int sig);
 
+inline void exiting();
+
 user_handler* user_handler::instancePtr = nullptr;
 
 int main (int argc, char* argv[])
@@ -64,11 +66,13 @@ int main (int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	fs::path spool_dir;
-	user_handler::getInstance()->setSpoolDir(spool_dir = fs::path(argv[2]));
-
+	fs::path spool_dir = fs::path(argv[2]);
 	fs::create_directory(spool_dir/"users");
 	fs::create_directory(spool_dir/"messages");
+
+	user_handler::getInstance()->setSpoolDir(spool_dir);
+
+	std::atexit(exiting);
 
 	char* p;
 	u_long PORT = strtoul(argv[1], &p, 10);
@@ -361,4 +365,10 @@ std::string get_sha1(const std::string& p_arg)
     }
 
     return std::string(buf);
+}
+
+inline void exiting()
+{
+	user_handler::getInstance()->saveAll();
+	printf("Saving...\n");
 }

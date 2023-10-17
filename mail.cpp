@@ -22,3 +22,17 @@ void mail::remove()
 
 	this->filename = "";
 }
+
+json mail::mailToJson()
+{
+	json json;
+
+	json["id"] = this->id;
+	json["timestamp"] = this->timestamp;
+	json["sender"] = this->sender;
+	json["recipients"] = this->recipients;
+	json["subject"] = this->subject;
+	json["filename"] = this->filename;
+
+	return json;
+}

@@ -28,6 +28,8 @@ public:
 	fs::path getSpoolDir() { return this->spool_dir; };
 	user* getUser(std::string name);
 
+	void saveAll();
+
 private:
 
 	static user_handler* instancePtr;

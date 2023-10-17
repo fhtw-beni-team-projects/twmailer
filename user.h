@@ -29,9 +29,12 @@ public:
 
 	mail* getMail(u_int id);
 	maillist getMails() { return this->mails; };
+
+	void saveToFile();
 	
 private:
 
+	fs::path file_location;
 	json user_data;
 
 	std::string name;

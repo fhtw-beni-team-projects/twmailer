@@ -22,3 +22,10 @@ user* user_handler::getUser(std::string name)
 	}
 	return this->users[name]; 
 }
+
+void user_handler::saveAll()
+{
+	for ( auto& user : this->users ) {
+		user.second->saveToFile();
+	}
+}
