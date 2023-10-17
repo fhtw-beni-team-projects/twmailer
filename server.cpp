@@ -190,7 +190,7 @@ void *clientCommunication(void *data)
 		return NULL;
 	}
 
-	std::string incomplete_message;
+	std::string incomplete_message = "";
 
 	do {
 		size = recv(*current_socket, buffer, BUF - 1, 0);
@@ -267,10 +267,12 @@ void *clientCommunication(void *data)
 				break;
 			}
 
-		if (send(*current_socket, "OK", 3, 0) == -1) {
+		if (send(*current_socket, "OK\n", 3, 0) == -1) {
 			perror("send answer failed");
 			return NULL;
 		}
+
+		incomplete_message.clear();
 
 	} while (strcmp(buffer, "quit") != 0 && !abortRequested);
 
