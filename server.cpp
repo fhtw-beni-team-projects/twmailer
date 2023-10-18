@@ -64,11 +64,13 @@ user_handler* user_handler::instancePtr = nullptr;
 int main (int argc, char* argv[])
 {
 	if (argc < 3 ||	
-		!isInteger(argv[1]) ||
-		!fs::is_directory(argv[2])
-		) {
+		!isInteger(argv[1])) {
 		printUsage();
 		return EXIT_FAILURE;
+	}
+
+	if (!fs::is_directory(argv[2])) {
+		fs::create_directory(argv[2]);
 	}
 
 	fs::path spool_dir = fs::path(argv[2]);

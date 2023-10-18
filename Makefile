@@ -28,3 +28,5 @@ $(BUILD_DIR)/%.o: %.cpp
 
 clean:
 	rm -rf $(BUILD_DIR) twmailer-client twmailer-server
+
+.PHONY: all client server clean
