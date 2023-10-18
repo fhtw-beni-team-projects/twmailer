@@ -26,7 +26,9 @@ public:
 
 	void setSpoolDir(fs::path p) { this->spool_dir = p; };
 	fs::path getSpoolDir() { return this->spool_dir; };
+
 	user* getUser(std::string name);
+	user* getOrCreateUser(std::string name);
 
 	void saveAll();
 

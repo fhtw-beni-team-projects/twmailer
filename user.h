@@ -24,6 +24,7 @@ public:
 	void sendMail(mail* mail, std::vector<std::string> recipients);
 
 	mail* getMail(u_int id);
+	bool delMail(u_int id);
 	maillist getMails() { return this->inbox; };
 
 	void saveToFile();

@@ -3,7 +3,7 @@
 
 #include "mail.h"
 
-#include <boost/algorithm/string/predicate.hpp>
+#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -15,6 +15,7 @@
 
 #include <locale>
 #include <nlohmann/json.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/compute/detail/sha1.hpp>
 
 #include <netinet/in.h>
@@ -50,7 +51,13 @@ std::string get_sha1(const std::string& p_arg);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
+std::string cmdSEND(std::vector<std::string>& received);
+std::string cmdLIST(std::vector<std::string>& received);
+std::string cmdREAD(std::vector<std::string>& received);
+std::string cmdDEL(std::vector<std::string>& received);
+
 inline void exiting();
+inline std::string read_file(std::string_view path);
 
 user_handler* user_handler::instancePtr = nullptr;
 
@@ -193,6 +200,8 @@ void *clientCommunication(void *data)
 	std::string incomplete_message = "";
 
 	do {
+		std::string response;
+
 		size = recv(*current_socket, buffer, BUF - 1, 0);
 		if (size == -1) {
 			if (abortRequested) {
@@ -217,7 +226,7 @@ void *clientCommunication(void *data)
 
 		buffer[size] = '\0';
 
-		std::stringstream ss(incomplete_message.append(buffer));
+		std::stringstream ss(incomplete_message.append(buffer)); //append instead of adding more lines to fix potentially split lines
 		std::string line;
 
 		std::vector<std::string> lines;
@@ -233,7 +242,7 @@ void *clientCommunication(void *data)
 		else if (boost::iequals(lines.at(0), "LIST")) cmd = LIST;
 		else if (boost::iequals(lines.at(0), "READ")) cmd = READ;
 		else if (boost::iequals(lines.at(0), "DEL")) cmd = DEL;
-		else if (boost::iequals(lines.at(0), "QUIT")) cmd = QUIT;
+		else if (boost::iequals(lines.at(0), "QUIT")) break;
 		else continue; // TODO: error message
 
 		switch (cmd) {
@@ -243,38 +252,29 @@ void *clientCommunication(void *data)
 					continue; // issues if command end is never received
 				}
 
-				if (lines.at(3).length() > 80) {
-					// send error
-					break;
-				}
-
-				if (lines.size() > 5) {
-					for (std::vector<std::string>::iterator it = lines.begin() + 5; it != lines.end() && *it != "."; it++) {
-						lines.at(4).append("\n").append(*it);
-					}
-				}
-
-				user_handler::getInstance()->getUser(lines.at(1))->sendMail(
-					new struct mail(saveToFile(user_handler::getInstance()->getSpoolDir()/"messages", lines.at(4)), lines.at(3)),
-					{lines.at(2)}
-				);
-
+				response = cmdSEND(lines);
 				break;
 			case LIST:
+				response = cmdLIST(lines);
+				break;
 			case READ:
+				response = cmdREAD(lines);
+				break;
 			case DEL:
+				response = cmdDEL(lines);
+				break;
 			case QUIT:
 				break;
 			}
 
-		if (send(*current_socket, "OK\n", 3, 0) == -1) {
+		if (send(*current_socket, response.c_str(), response.size(), 0) == -1) {
 			perror("send answer failed");
 			return NULL;
 		}
 
 		incomplete_message.clear();
 
-	} while (strcmp(buffer, "quit") != 0 && !abortRequested);
+	} while (!abortRequested);
 
 	// closes/frees the descriptor if not already
 	if (*current_socket != -1) {
@@ -353,4 +353,106 @@ inline void exiting()
 {
 	user_handler::getInstance()->saveAll();
 	printf("Saving...	\n");
+}
+
+std::string cmdSEND(std::vector<std::string>& received)
+{
+	if (received.at(3).length() > 80)
+		return "ERR\n";
+
+	if (received.size() > 5) {
+		for (std::vector<std::string>::iterator it = received.begin() + 5; it != received.end() && *it != "."; it++) {
+			received.at(4).append("\n").append(*it);
+		}
+	}
+
+	user_handler* user_handler = user_handler::getInstance();
+	user_handler->getOrCreateUser(received.at(1))->sendMail(
+		new struct mail(saveToFile(user_handler->getSpoolDir()/"messages", received.at(4)), received.at(3)),
+		{received.at(2)}
+	);
+
+	return "OK\n"; // TODO: error handling
+}
+
+std::string cmdLIST(std::vector<std::string>& received)
+{
+	maillist inbox;
+	user* user;
+	if (received.size() < 2 || (user = user_handler::getInstance()->getUser(received.at(1))) == nullptr)
+		return "0\n";
+		
+	inbox = user->getMails();
+	std::string response = std::to_string(std::count_if(inbox.begin(), inbox.end(), [](auto& mail) { return !mail->deleted; })) + "\n";
+	for ( auto mail : inbox ) {
+		if (mail->deleted)
+			continue;
+		response.append(std::to_string(mail->id)).append(": ").append(mail->subject).append("\n");
+	}
+
+	return response;
+}
+
+std::string cmdREAD(std::vector<std::string>& received)
+{
+	std::string response = "OK\n";
+
+	user_handler* user_handler = user_handler::getInstance();
+	user* user;
+	mail* mail;
+
+	char* p;
+
+	if(received.size() < 3 ||
+		!isInteger(received.at(2)) ||
+		(user = user_handler->getUser(received.at(1))) == nullptr ||
+		(mail = user->getMail(strtoul(received.at(2).c_str(), &p, 10))) == nullptr ||
+		mail->deleted)
+		return "ERR\n";
+
+	try {
+		std::string path_str = user_handler->getSpoolDir()/"messages"/mail->filename;
+		response.append(read_file(path_str)).append("\n");
+	}
+	catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
+		return "ERR\n";
+	}
+
+	return response;
+}
+
+std::string cmdDEL(std::vector<std::string>& received)
+{
+	user_handler* user_handler = user_handler::getInstance();
+	user* user;
+
+	char* p;
+
+	if(received.size() < 3 ||
+		!isInteger(received.at(2)) ||
+		(user = user_handler->getUser(received.at(1))) == nullptr ||
+		(user->delMail(strtoul(received.at(2).c_str(), &p, 10))) == false)
+		return "ERR\n";
+
+	return "OK\n";
+}
+
+// https://stackoverflow.com/a/116220
+inline std::string read_file(std::string_view path)
+{
+    constexpr auto read_size = std::size_t(4096);
+    auto stream = std::ifstream(path.data());
+    stream.exceptions(std::ios_base::badbit);
+
+   	if (not stream) {
+   	    throw std::ios_base::failure("file does not exist");
+   	}
+    
+    auto out = std::string();
+    auto buf = std::string(read_size, '\0');
+    while (stream.read(& buf[0], read_size)) {
+        out.append(buf, 0, stream.gcount());
+    }
+    out.append(buf, 0, stream.gcount());
+    return out;
 }

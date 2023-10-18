@@ -26,6 +26,7 @@ user::user(fs::path user_data_json)
 		mail->id = mail_json["id"];
 		mail->sender = mail_json["sender"];
 		mail->recipients = mail_json["recipients"].get<std::vector<std::string>>();
+		mail->deleted = mail_json["deleted"];
 		
 		this->inbox.insert(mail);
 	}
@@ -39,6 +40,7 @@ user::user(fs::path user_data_json)
 		mail->id = mail_json["id"];
 		mail->sender = mail_json["sender"];
 		mail->recipients = mail_json["recipients"].get<std::vector<std::string>>();
+		mail->deleted = mail_json["deleted"];
 		
 		this->sent.insert(mail);
 	}
@@ -79,7 +81,7 @@ void user::sendMail(mail* mail, std::vector<std::string> recipients)
 	std::vector<user*> users;
 	for ( auto& name : recipients) {
 		// TODO: error handling for non existing user
-		users.push_back(user_handler->getUser(name));
+		users.push_back(user_handler->getOrCreateUser(name));
 	}
 
 	mail->sender = this->name;
@@ -101,9 +103,31 @@ mail* user::getMail(u_int id)
 	return it == this->inbox.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it;
 }
 
+bool user::delMail(u_int id) 
+{
+	maillist::iterator it = std::find_if(this->inbox.begin(), this->inbox.end(), [id](auto& i){ return (*i)(id); });
+
+	bool success = true;
+
+	if (it == this->inbox.end() ||
+		(*it)->deleted)
+		return false;
+
+	if (!(*it)->filename.empty())
+		success = fs::remove(user_handler::getInstance()->getSpoolDir()/"messages"/(*it)->filename);
+
+	if (success) {
+		this->user_data["mails"]["received"][std::to_string((*it)->id)]["subject"] = "";
+		this->user_data["mails"]["received"][std::to_string((*it)->id)]["filename"] = "";
+		this->user_data["mails"]["received"][std::to_string((*it)->id)]["deleted"] = true;
+		(*it)->deleted = true; // other info will be deleted on shutdown
+	}
+
+	return success;
+}
+
 void user::saveToFile()
 {
-	printf("%s\n", this->user_data.dump().c_str());
 	std::fstream fs(this->file_location);
 	fs << this->user_data.dump();
 }

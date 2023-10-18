@@ -16,6 +16,17 @@ user_handler::user_handler()
 user* user_handler::getUser(std::string name)
 {
 	if (this->users.find(name) == this->users.end()) {
+		if (!fs::exists(this->spool_dir/"users"/(name+".json")))
+			return nullptr;
+
+		this->users[name] = new user(this->spool_dir/"users"/(name+".json"));
+	}
+	return this->users[name]; 
+}
+
+user* user_handler::getOrCreateUser(std::string name)
+{
+	if (this->users.find(name) == this->users.end()) {
 		this->users[name] = fs::exists(this->spool_dir/"users"/(name+".json")) ?
 			new user(this->spool_dir/"users"/(name+".json")) :
 			new user(name, this->spool_dir/"users");

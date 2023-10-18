@@ -3,13 +3,15 @@
 mail::mail(std::string filename, std::string subject) :
 	filename(filename),
 	timestamp(std::time(NULL)),
-	subject(subject)
+	subject(subject),
+	deleted(false)
 {}
 
 mail::mail(std::string filename, int64_t timestamp, std::string subject) :
 	filename(filename),
 	timestamp(timestamp),
-	subject(subject)
+	subject(subject),
+	deleted(false)
 {}
 
 /*
@@ -39,6 +41,7 @@ json mail::mailToJson()
 	jsonfile["recipients"] = this->recipients;
 	jsonfile["subject"] = this->subject;
 	jsonfile["filename"] = this->filename;
+	jsonfile["deleted"] = this->deleted;
 
 	return jsonfile;
 }

@@ -9,7 +9,6 @@
 
 #include <nlohmann/json.hpp>
 
-namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 struct mail {
@@ -22,6 +21,8 @@ struct mail {
 	std::vector<std::string> recipients;
 	std::string subject;
 
+	bool deleted;
+
 	mail(std::string filename, std::string subject);
 	mail(std::string filename, int64_t timestamp, std::string subject);
 
@@ -32,8 +33,6 @@ struct mail {
 	bool operator<(mail& left) const {
 		return left.timestamp > this->timestamp;
 	}
-
-	fs::path getPath() { return this->filename; };
 
 	json mailToJson();
 
