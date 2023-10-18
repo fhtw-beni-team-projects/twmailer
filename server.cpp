@@ -191,12 +191,6 @@ void *clientCommunication(void *data)
 	int size;
 	int *current_socket = (int *)data;
 
-	strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
-	if (send(*current_socket, buffer, strlen(buffer), 0) == -1) {
-		perror("send failed");
-		return NULL;
-	}
-
 	std::string incomplete_message = "";
 
 	do {
