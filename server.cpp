@@ -86,7 +86,7 @@ int main (int argc, char* argv[])
 
 	/* Code largely from the client-server-sample git / myserver.c */
 
-	__socklen_t addrlen;
+	socklen_t addrlen;
 	struct sockaddr_in address, cliaddress;
 	int reuseValue = 1;
 
