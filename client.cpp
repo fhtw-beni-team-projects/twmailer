@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
@@ -85,30 +86,78 @@ int main(int argc, char **argv)
       printf("%s", buffer); // ignore error
    }
 
-   do
-   {
-      printf(">> ");
-      if (fgets(buffer, BUF - 1, stdin) != NULL)
-      {
-         int size = strlen(buffer);
-         // remove new-line signs from string at the end
-         if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
-         {
-            size -= 2;
-            buffer[size] = 0;
-         }
-         else if (buffer[size - 1] == '\n')
-         {
-            --size;
-            buffer[size] = 0;
-         }
-         isQuit = strcmp(buffer, "quit") == 0;
+   do {
+        printf("Please specify a command (SEND, LIST, READ, DEL, QUIT): ");
+        if (fgets(buffer, BUF - 1, stdin) != NULL)
+        {
+            size = strlen(buffer);
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+                buffer[size] = 0;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+                buffer[size] = 0;
+            }
+
+            isQuit = strcmp(buffer, "QUIT") == 0;
+
+            if (strcmp(buffer, "SEND") == 0)
+            {
+                char sender[BUF], receiver[BUF], subject[81], message[BUF * 10];
+                printf("Sender: ");
+                fgets(sender, BUF - 1, stdin);
+                printf("Receiver: ");
+                fgets(receiver, BUF - 1, stdin);
+                printf("Subject: ");
+                fgets(subject, 80, stdin);
+                printf("Message: \n");
+                char line[BUF];
+                message[0] = '\0';
+                while (true)
+                {
+                    fgets(line, BUF - 1, stdin);
+                    if (strcmp(line, ".\n") == 0)
+                        break;
+                    strcat(message, line);
+                }
+                snprintf(buffer, sizeof(buffer), "SEND\n%s%s%s%s.\n", sender, receiver, subject, message);
+            }
+            else if (strcmp(buffer, "LIST") == 0)
+            {
+                char username[BUF];
+                printf("Username: ");
+                fgets(username, BUF - 1, stdin);
+                snprintf(buffer, sizeof(buffer), "LIST\n%s", username);
+            }
+            else if (strcmp(buffer, "READ") == 0)
+            {
+                char username[BUF], msgNum[10];
+                printf("Username: ");
+                fgets(username, BUF - 1, stdin);
+                printf("Message Number: ");
+                fgets(msgNum, 9, stdin);
+                snprintf(buffer, sizeof(buffer), "READ\n%s%s", username, msgNum);
+            }
+            else if (strcmp(buffer, "DEL") == 0)
+            {
+                char username[BUF], msgNum[10];
+                printf("Username: ");
+                fgets(username, BUF - 1, stdin);
+                printf("Message Number: ");
+                fgets(msgNum, 9, stdin);
+                snprintf(buffer, sizeof(buffer), "DEL\n%s%s", username, msgNum);
+            }
 
          //////////////////////////////////////////////////////////////////////
          // SEND DATA
          // https://man7.org/linux/man-pages/man2/send.2.html
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
+         int size = strlen(buffer);
+
          if ((send(create_socket, buffer, size + 1, 0)) == -1) 
          {
             // in case the server is gone offline we will still not enter
