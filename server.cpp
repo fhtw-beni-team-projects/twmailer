@@ -69,11 +69,9 @@ int main (int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!fs::is_directory(argv[2])) {
-		fs::create_directory(argv[2]);
-	}
-
 	fs::path spool_dir = fs::path(argv[2]);
+
+	fs::create_directory(spool_dir);
 	fs::create_directory(spool_dir/"users");
 	fs::create_directory(spool_dir/"messages");
 
