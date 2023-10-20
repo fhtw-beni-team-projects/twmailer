@@ -71,7 +71,16 @@ int main (int argc, char* argv[])
 
 	fs::path spool_dir = fs::path(argv[2]);
 
-	fs::create_directory(spool_dir);
+	if (fs::exists(spool_dir) && !fs::is_directory(spool_dir)) {
+		printf("%s is not a directory\n", spool_dir.c_str());
+		printUsage();
+		return EXIT_FAILURE;
+	}
+
+	if (fs::create_directory(spool_dir)) {
+		printf("%s does not exist, creating new...\n", spool_dir.c_str());
+	}
+
 	fs::create_directory(spool_dir/"users");
 	fs::create_directory(spool_dir/"messages");
 
@@ -182,7 +191,7 @@ inline bool isInteger(const std::string & s)
 
 void printUsage()
 {
-	printf("printUsage\n");
+	printf("Usage: <twmailer-server [port] [path spool_directory]>\n");
 }
 
 void *clientCommunication(void *data)
