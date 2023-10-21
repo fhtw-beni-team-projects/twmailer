@@ -12,18 +12,21 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <cctype>
+#include <algorithm> 
+#include <string_view>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include <locale>
+
 #include <nlohmann/json.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/compute/detail/sha1.hpp>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <openssl/sha.h>
 
 #define BUF 1024
 
@@ -43,9 +46,11 @@ int new_socket = -1;
 
 void printUsage();
 inline bool isInteger(const std::string & s);
+bool ichar_equals(char a, char b);
+bool iequals(std::string_view lhs, std::string_view rhs);
 
 std::string saveToFile(fs::path object_dir, std::string message);
-std::string get_sha1(const std::string& p_arg);
+std::string getSha1(const std::string& p_arg);
 
 // from myserver.c
 void *clientCommunication(void *data);
@@ -234,11 +239,11 @@ void *clientCommunication(void *data)
 		enum commands cmd;
 
 		// can't wait for reflections (maybe c++26?)
-		if (boost::iequals(lines.at(0), "SEND")) cmd = SEND;
-		else if (boost::iequals(lines.at(0), "LIST")) cmd = LIST;
-		else if (boost::iequals(lines.at(0), "READ")) cmd = READ;
-		else if (boost::iequals(lines.at(0), "DEL")) cmd = DEL;
-		else if (boost::iequals(lines.at(0), "QUIT")) break;
+		if (iequals(lines.at(0), "SEND")) cmd = SEND;
+		else if (iequals(lines.at(0), "LIST")) cmd = LIST;
+		else if (iequals(lines.at(0), "READ")) cmd = READ;
+		else if (iequals(lines.at(0), "DEL")) cmd = DEL;
+		else if (iequals(lines.at(0), "QUIT")) break;
 		else continue; // TODO: error message
 
 		switch (cmd) {
@@ -320,29 +325,30 @@ void signalHandler(int sig)
 
 std::string saveToFile(fs::path object_dir, std::string message)
 {
-	std::string sha1 = get_sha1(message);
+	std::string sha1 = getSha1(message);
 	std::ofstream ofs(object_dir/sha1); // possible issues with path length or file length limitations
 	ofs << message;
 	return sha1;
 }
 
-// https://stackoverflow.com/questions/28489153/how-to-portably-compute-a-sha1-hash-in-c
-std::string get_sha1(const std::string& p_arg)
+std::string getSha1(const std::string& str)
 {
-    boost::uuids::detail::sha1 sha1;
-    sha1.process_bytes(p_arg.data(), p_arg.size());
-    unsigned hash[5] = {0};
-    sha1.get_digest(hash);
+	unsigned char v[str.length() + 1];
+	unsigned char hash[40];
+	std::copy(str.data(), str.data() + str.length() + 1, v);
 
-    // Back to string
-    char buf[41] = {0};
+	SHA1(v, strlen((char *)v), hash);
 
-    for (int i = 0; i < 5; i++)
+    std::string out;
+
+    for (int i = 0; i < 20; i++)
     {
-        std::sprintf(buf + (i << 3), "%08x", hash[i]);
+    	char buf[3];
+        std::sprintf(buf, "%02x", hash[i]);
+        out.append(buf);
     }
 
-    return std::string(buf);
+    return out;
 }
 
 inline void exiting()
@@ -451,4 +457,15 @@ inline std::string read_file(std::string_view path)
     }
     out.append(buf, 0, stream.gcount());
     return out;
+}
+
+bool ichar_equals(char a, char b)
+{
+    return std::tolower(static_cast<unsigned char>(a)) ==
+           std::tolower(static_cast<unsigned char>(b));
+}
+
+bool iequals(std::string_view lhs, std::string_view rhs)
+{
+    return std::ranges::equal(lhs, rhs, ichar_equals);
 }
