@@ -94,7 +94,7 @@ int main (int argc, char* argv[])
 	std::atexit(exiting);
 
 	char* p;
-	u_long PORT = strtoul(argv[1], &p, 10);
+	uint16_t PORT = strtoul(argv[1], &p, 10);
 
 	/* Code largely from the client-server-sample git / myserver.c */
 

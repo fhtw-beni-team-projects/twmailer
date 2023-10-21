@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -5,15 +7,26 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
 #include <string.h>
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
-#define PORT 6543
+//#define PORT 6543
 
 ///////////////////////////////////////////////////////////////////////////////
+
+enum commands {
+	SEND = 1,
+	LIST,
+	READ,
+	DEL,
+	QUIT = -1
+};
+
+inline bool isInteger(const std::string & s);
+void printUsage();
 
 int main(int argc, char **argv)
 {
@@ -35,22 +48,28 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	if (argc < 2 ||
+		argc == 2 && !isInteger(argv[1]) ||
+		argc > 2 && !isInteger(argv[2])) {
+		printUsage();
+		return EXIT_FAILURE;
+	}
+
+	char* p;
+	uint16_t PORT = argc == 2 ? strtoul(argv[1], &p, 10) : strtoul(argv[2], &p, 10);
+
 	////////////////////////////////////////////////////////////////////////////
 	// INIT ADDRESS
 	// Attention: network byte order => big endian
 	memset(&address, 0, sizeof(address)); // init storage with 0
-	address.sin_family = AF_INET;         // IPv4
+	address.sin_family = AF_INET;		 // IPv4
 	// https://man7.org/linux/man-pages/man3/htons.3.html
 	address.sin_port = htons(PORT);
 	// https://man7.org/linux/man-pages/man3/inet_aton.3.html
-	if (argc < 2)
-	{
+	if (argc == 2)
 		inet_aton("127.0.0.1", &address.sin_addr);
-	}
 	else
-	{
 		inet_aton(argv[1], &address.sin_addr);
-	}
 
 	////////////////////////////////////////////////////////////////////////////
 	// CREATE A CONNECTION
@@ -104,10 +123,17 @@ int main(int argc, char **argv)
 				buffer[size] = 0;
 			}
 
-			isQuit = strcmp(buffer, "QUIT") == 0;
+			enum commands cmd;
+			if (strcmp(buffer, "SEND") == 0) cmd = SEND;
+			else if (strcmp(buffer, "LIST") == 0) cmd = LIST;
+			else if (strcmp(buffer, "READ") == 0) cmd = READ;
+			else if (strcmp(buffer, "DEL") == 0) cmd = DEL;
+			else if (strcmp(buffer, "QUIT") == 0) break;
 
-			if (strcmp(buffer, "SEND") == 0)
-			{
+			char username[BUF], msgNum[10];
+
+			switch (cmd) {
+			case SEND:
 				char sender[BUF], receiver[BUF], subject[81], message[BUF * 10];
 				printf("Sender: ");
 				fgets(sender, BUF - 1, stdin);
@@ -115,7 +141,7 @@ int main(int argc, char **argv)
 				fgets(receiver, BUF - 1, stdin);
 				printf("Subject: ");
 				fgets(subject, 80, stdin);
-				printf("Message: ");
+				printf("Message (send by typing \".\" in a seperate line): ");
 				char line[BUF];
 				message[0] = '\0';
 				while (true)
@@ -126,33 +152,32 @@ int main(int argc, char **argv)
 					strcat(message, line);
 				}
 				snprintf(buffer, sizeof(buffer), "SEND\n%s%s%s%s.\n", sender, receiver, subject, message);
-			}
-			else if (strcmp(buffer, "LIST") == 0)
-			{
+				break;
+			case LIST:
 				char username[BUF];
 				printf("Username: ");
 				fgets(username, BUF - 1, stdin);
 				snprintf(buffer, sizeof(buffer), "LIST\n%s", username);
-			}
-			else if (strcmp(buffer, "READ") == 0)
-			{
-				char username[BUF], msgNum[10];
+				break;
+			case READ:
 				printf("Username: ");
 				fgets(username, BUF - 1, stdin);
 				printf("Message Number: ");
 				fgets(msgNum, 9, stdin);
 				snprintf(buffer, sizeof(buffer), "READ\n%s%s", username, msgNum);
-			}
-			else if (strcmp(buffer, "DEL") == 0)
-			{
-				char username[BUF], msgNum[10];
+				break;
+			case DEL:
 				printf("Username: ");
 				fgets(username, BUF - 1, stdin);
 				printf("Message Number: ");
 				fgets(msgNum, 9, stdin);
 				snprintf(buffer, sizeof(buffer), "DEL\n%s%s", username, msgNum);
+				break;
+			case QUIT:
+				// will break out of loop before quit
+				break;
 			}
-
+		
 			//////////////////////////////////////////////////////////////////////
 			// SEND DATA
 			// https://man7.org/linux/man-pages/man2/send.2.html
@@ -184,7 +209,7 @@ int main(int argc, char **argv)
 			//           - Else a command might have been lost.
 			//
 			// solution 1: adding meta-data (unique command id) and check on the
-			//             server if already processed.
+			//			 server if already processed.
 			// solution 2: add an infrastructure component for messaging (broker)
 			//
 			size = recv(create_socket, buffer, BUF - 1, 0);
@@ -209,7 +234,7 @@ int main(int argc, char **argv)
 				}*/
 			}
 		}
-	} while (!isQuit);
+	} while (true);
 
 	////////////////////////////////////////////////////////////////////////////
 	// CLOSES THE DESCRIPTOR
@@ -228,4 +253,20 @@ int main(int argc, char **argv)
 	}
 
 	return EXIT_SUCCESS;
+}
+
+// https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
+inline bool isInteger(const std::string & s)
+{
+	if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+
+	char * p;
+	strtol(s.c_str(), &p, 10);
+
+	return (*p == 0);
+}
+
+void printUsage()
+{
+	printf("Usage: <twmailer-server [host/ip (default: 127.0.0.1)] [port]>\n");
 }
