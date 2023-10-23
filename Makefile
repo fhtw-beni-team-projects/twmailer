@@ -1,7 +1,8 @@
 CC = g++
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
-CFLAGS := -g -std=c++20 -Wall -I./include
+CFLAGS := -g -std=c++20 -Wall -I./include -I./server -I./client
 LDFLAGS   += -fsanitize=address -lpthread -lssl -lcrypto
+VPATH = server/:client/
 
 TARGET = client server
 BUILD_DIR = build
