@@ -77,11 +77,10 @@ void user::addMail(mail* mail)
 
 void user::sendMail(mail* mail, std::vector<std::string> recipients) 
 {
-	user_handler* user_handler = user_handler::getInstance();
 	std::vector<user*> users;
 	for ( auto& name : recipients) {
 		// TODO: error handling for non existing user
-		users.push_back(user_handler->getOrCreateUser(name));
+		users.push_back(user_handler::getInstance().getOrCreateUser(name));
 	}
 
 	mail->sender = this->name;
@@ -114,7 +113,7 @@ bool user::delMail(u_int id)
 		return false;
 
 	if (!(*it)->filename.empty())
-		success = fs::remove(user_handler::getInstance()->getSpoolDir()/"messages"/(*it)->filename);
+		success = fs::remove(user_handler::getInstance().getSpoolDir()/"messages"/(*it)->filename);
 
 	if (success) {
 		this->user_data["mails"]["received"][std::to_string((*it)->id)]["subject"] = "";

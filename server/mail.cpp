@@ -26,7 +26,7 @@ void mail::remove()
 {
 	if (this->filename.empty())
 		return;
-	std::remove((user_handler::getInstance()->getSpoolDir()/"objects"/fs::path(this->filename.insert(2, "/"))).c_str());
+	std::remove((user_handler::getInstance().getSpoolDir()/"objects"/fs::path(this->filename.insert(2, "/"))).c_str());
 
 	this->filename = "";
 }

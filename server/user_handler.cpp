@@ -13,6 +13,11 @@ user_handler::user_handler()
 	}
 }
 
+user_handler::~user_handler()
+{
+	//
+}
+
 user* user_handler::getUser(std::string name)
 {
 	if (this->users.find(name) == this->users.end()) {

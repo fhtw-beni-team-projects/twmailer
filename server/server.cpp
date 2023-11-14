@@ -3,7 +3,6 @@
 
 #include "mail.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -14,10 +13,14 @@
 #include <fstream>
 #include <cctype>
 #include <algorithm> 
+#include <future>
+#include <pthread.h>
 #include <string_view>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
+#include <algorithm>
 
 #include <locale>
 
@@ -53,7 +56,7 @@ std::string saveToFile(fs::path object_dir, std::string message);
 std::string getSha1(const std::string& p_arg);
 
 // from myserver.c
-void *clientCommunication(void *data);
+void *clientCommunication(int data);
 void signalHandler(int sig);
 
 std::string cmdSEND(std::vector<std::string>& received);
@@ -63,8 +66,6 @@ std::string cmdDEL(std::vector<std::string>& received);
 
 inline void exiting();
 inline std::string read_file(std::string_view path);
-
-user_handler* user_handler::instancePtr = nullptr;
 
 int main (int argc, char* argv[])
 {
@@ -89,7 +90,7 @@ int main (int argc, char* argv[])
 	fs::create_directory(spool_dir/"users");
 	fs::create_directory(spool_dir/"messages");
 
-	user_handler::getInstance()->setSpoolDir(spool_dir);
+	user_handler::getInstance().setSpoolDir(spool_dir);
 
 	std::atexit(exiting);
 
@@ -150,8 +151,8 @@ int main (int argc, char* argv[])
 
 		addrlen = sizeof(struct sockaddr_in);
 		if ((new_socket = accept(create_socket,
-										 (struct sockaddr *)&cliaddress,
-										 &addrlen)) == -1) {
+								 (struct sockaddr *)&cliaddress,
+								 &addrlen)) == -1) {
 			if (abortRequested) {
 				perror("accept error after aborted");
 			}
@@ -164,7 +165,9 @@ int main (int argc, char* argv[])
 		printf("Client connected from %s:%d...\n",
 				 inet_ntoa(cliaddress.sin_addr),
 				 ntohs(cliaddress.sin_port));
-		clientCommunication(&new_socket); // returnValue can be ignored
+		// clientCommunication(&new_socket); // returnValue can be ignored
+		std::thread th(clientCommunication, new_socket);
+		th.detach();
 		new_socket = -1;
 	}
 
@@ -199,11 +202,11 @@ void printUsage()
 	printf("Usage: <twmailer-server [port] [path spool_directory]>\n");
 }
 
-void *clientCommunication(void *data)
+void *clientCommunication(int data)
 {
 	char buffer[BUF];
 	int size;
-	int *current_socket = (int *)data;
+	int *current_socket = &data;
 
 	std::string incomplete_message = "";
 
@@ -360,7 +363,7 @@ std::string getSha1(const std::string& str)
 
 inline void exiting()
 {
-	user_handler::getInstance()->saveAll();
+	user_handler::getInstance().saveAll();
 	printf("Saving...	\n");
 }
 
@@ -375,9 +378,8 @@ std::string cmdSEND(std::vector<std::string>& received)
 		}
 	}
 
-	user_handler* user_handler = user_handler::getInstance();
-	user_handler->getOrCreateUser(received.at(1))->sendMail(
-		new struct mail(saveToFile(user_handler->getSpoolDir()/"messages", received.at(4)), received.at(3)),
+	user_handler::getInstance().getOrCreateUser(received.at(1))->sendMail(
+		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3)),
 		{received.at(2)}
 	);
 
@@ -388,7 +390,7 @@ std::string cmdLIST(std::vector<std::string>& received)
 {
 	maillist inbox;
 	user* user;
-	if (received.size() < 2 || (user = user_handler::getInstance()->getUser(received.at(1))) == nullptr)
+	if (received.size() < 2 || (user = user_handler::getInstance().getUser(received.at(1))) == nullptr)
 		return "0\n";
 		
 	inbox = user->getMails();
@@ -406,7 +408,6 @@ std::string cmdREAD(std::vector<std::string>& received)
 {
 	std::string response = "OK\n";
 
-	user_handler* user_handler = user_handler::getInstance();
 	user* user;
 	mail* mail;
 
@@ -414,13 +415,13 @@ std::string cmdREAD(std::vector<std::string>& received)
 
 	if(received.size() < 3 ||
 		!isInteger(received.at(2)) ||
-		(user = user_handler->getUser(received.at(1))) == nullptr ||
+		(user = user_handler::getInstance().getUser(received.at(1))) == nullptr ||
 		(mail = user->getMail(strtoul(received.at(2).c_str(), &p, 10))) == nullptr ||
 		mail->deleted)
 		return "ERR\n";
 
 	try {
-		std::string path_str = user_handler->getSpoolDir()/"messages"/mail->filename;
+		std::string path_str = user_handler::getInstance().getSpoolDir()/"messages"/mail->filename;
 		response.append(read_file(path_str)).append("\n");
 	}
 	catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
@@ -432,14 +433,13 @@ std::string cmdREAD(std::vector<std::string>& received)
 
 std::string cmdDEL(std::vector<std::string>& received)
 {
-	user_handler* user_handler = user_handler::getInstance();
 	user* user;
 
 	char* p;
 
 	if(received.size() < 3 ||
 		!isInteger(received.at(2)) ||
-		(user = user_handler->getUser(received.at(1))) == nullptr ||
+		(user = user_handler::getInstance().getUser(received.at(1))) == nullptr ||
 		(user->delMail(strtoul(received.at(2).c_str(), &p, 10))) == false)
 		return "ERR\n";
 

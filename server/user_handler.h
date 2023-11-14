@@ -12,17 +12,15 @@ namespace fs = std::filesystem;
 class user_handler {
 public:
 
-	user_handler(const user_handler& obj) = delete;
-
-	static user_handler* getInstance() {
-		if (instancePtr == nullptr) {
-			instancePtr = new user_handler();
-			return instancePtr;
-		} else {
-			return instancePtr;
-		}
+	static user_handler& getInstance() {
+		static user_handler instance;
+		return instance;
 	};
-	~user_handler();
+
+	user_handler(user_handler const&) = delete;
+	user_handler(user_handler&&) = delete;
+	user_handler& operator=(user_handler const&) = delete;
+	user_handler& operator=(user_handler &&) = delete;
 
 	void setSpoolDir(fs::path p) { this->spool_dir = p; };
 	fs::path getSpoolDir() { return this->spool_dir; };
@@ -32,10 +30,10 @@ public:
 
 	void saveAll();
 
-private:
+protected:
 
-	static user_handler* instancePtr;
 	user_handler();
+	~user_handler();
 
 	fs::path spool_dir;
 	std::map<std::string, user*> users;
