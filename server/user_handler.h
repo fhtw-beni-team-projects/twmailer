@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <map>
+#include <mutex>
 #include <string>
 
 class user;
@@ -37,5 +38,7 @@ protected:
 
 	fs::path spool_dir;
 	std::map<std::string, user*> users;
+
+	std::mutex m_user;
 	
 };

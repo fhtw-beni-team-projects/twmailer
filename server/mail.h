@@ -37,4 +37,6 @@ struct mail {
 	json mailToJson();
 
 	void remove();
+
+	std::mutex m_file;
 };

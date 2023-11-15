@@ -14,6 +14,7 @@
 #include <cctype>
 #include <algorithm> 
 #include <future>
+#include <mutex>
 #include <pthread.h>
 #include <string_view>
 #include <sstream>
@@ -43,9 +44,11 @@ enum commands {
 
 namespace fs = std::filesystem;
 
-int abortRequested = 0;
+bool abortRequested = false;
 int create_socket = -1;
 int new_socket = -1;
+
+std::vector<std::thread> threads;
 
 void printUsage();
 inline bool isInteger(const std::string & s);
@@ -166,8 +169,7 @@ int main (int argc, char* argv[])
 				 inet_ntoa(cliaddress.sin_addr),
 				 ntohs(cliaddress.sin_port));
 		// clientCommunication(&new_socket); // returnValue can be ignored
-		std::thread th(clientCommunication, new_socket);
-		th.detach();
+		threads.emplace_back(clientCommunication, new_socket);
 		new_socket = -1;
 	}
 
@@ -305,7 +307,7 @@ void signalHandler(int sig)
 {
 	if (sig == SIGINT) {
 		printf("abort Requested... "); // ignore error
-		abortRequested = 1;
+		abortRequested = true;
 		if (new_socket != -1)
 		{
 			if (shutdown(new_socket, SHUT_RDWR) == -1)
@@ -363,6 +365,10 @@ std::string getSha1(const std::string& str)
 
 inline void exiting()
 {
+    for (auto& thread : threads) {
+    	thread.join();
+    }
+
 	user_handler::getInstance().saveAll();
 	printf("Saving...	\n");
 }
@@ -420,13 +426,14 @@ std::string cmdREAD(std::vector<std::string>& received)
 		mail->deleted)
 		return "ERR\n";
 
-	try {
+	/*try */{
 		std::string path_str = user_handler::getInstance().getSpoolDir()/"messages"/mail->filename;
+		std::lock_guard<std::mutex> guard(mail->m_file);
 		response.append(read_file(path_str)).append("\n");
 	}
-	catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
+	/*catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
 		return "ERR\n";
-	}
+	}*/
 
 	return response;
 }

@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -11,7 +12,7 @@
 
 using json = nlohmann::json;
 
-user::user(fs::path user_data_json)
+user::user(fs::path user_data_json) : m()
 {
 	std::ifstream ifs(user_data_json);
 	json user_data = json::parse(ifs);
@@ -50,7 +51,8 @@ user::user(fs::path user_data_json)
 }
 
 user::user(std::string name, fs::path user_dir)
-	: name(name)
+	: name(name),
+	  m()
 {
 	json user;
 	user["mails"]["sent"] = json::object();
@@ -69,6 +71,8 @@ user::~user() {
 
 void user::addMail(mail* mail) 
 {
+	std::lock_guard<std::mutex> guard(this->m);
+
 	mail->id = this->inbox.size();
 
 	this->inbox.insert(mail);
@@ -77,6 +81,8 @@ void user::addMail(mail* mail)
 
 void user::sendMail(mail* mail, std::vector<std::string> recipients) 
 {
+	std::lock_guard<std::mutex> guard(this->m);
+
 	std::vector<user*> users;
 	for ( auto& name : recipients) {
 		// TODO: error handling for non existing user
@@ -104,6 +110,8 @@ mail* user::getMail(u_int id)
 
 bool user::delMail(u_int id) 
 {
+	std::lock_guard<std::mutex> guard(this->m);
+
 	maillist::iterator it = std::find_if(this->inbox.begin(), this->inbox.end(), [id](auto& i){ return (*i)(id); });
 
 	bool success = true;

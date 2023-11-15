@@ -2,6 +2,7 @@
 
 #include "mail.h"
 
+#include <mutex>
 #include <string>
 #include <set>
 #include <vector>
@@ -37,4 +38,6 @@ private:
 	std::string name;
 	maillist inbox;
 	maillist sent;
+
+	std::mutex m;
 };
