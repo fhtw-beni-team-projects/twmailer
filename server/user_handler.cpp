@@ -15,6 +15,9 @@ user_handler::user_handler() : m_user()
 
 user_handler::~user_handler()
 {
+	for (auto& user : this->users) {
+		delete(user.second);
+	}
 	//
 }
 

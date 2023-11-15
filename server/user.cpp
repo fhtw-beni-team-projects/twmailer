@@ -32,7 +32,7 @@ user::user(fs::path user_data_json) : m()
 		this->inbox.insert(mail);
 	}
 
-	for ( auto& mail_json : user_data["mails"]["sent"] ) {
+	/*for ( auto& mail_json : user_data["mails"]["sent"] ) {
 		mail* mail = new struct mail(
 			mail_json["filename"],
 			mail_json["timestamp"],
@@ -44,7 +44,7 @@ user::user(fs::path user_data_json) : m()
 		mail->deleted = mail_json["deleted"];
 		
 		this->sent.insert(mail);
-	}
+	}*/
 
 	this->user_data = user_data;
 	this->file_location = user_data_json;
@@ -66,7 +66,12 @@ user::user(std::string name, fs::path user_dir)
 }
 
 user::~user() {
-
+	for (auto& mail : this->inbox) {
+		delete(mail);
+	}
+	for (auto& mail : this->sent) { // depricated
+		delete(mail);
+	}
 }
 
 void user::addMail(mail* mail) 
