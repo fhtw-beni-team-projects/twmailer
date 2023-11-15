@@ -48,7 +48,7 @@ bool abortRequested = false;
 int create_socket = -1;
 int new_socket = -1;
 
-std::vector<std::thread> threads;
+std::vector<pthread_t> threads;
 
 void printUsage();
 inline bool isInteger(const std::string & s);
@@ -59,7 +59,7 @@ std::string saveToFile(fs::path object_dir, std::string message);
 std::string getSha1(const std::string& p_arg);
 
 // from myserver.c
-void *clientCommunication(int data);
+void *clientCommunication(void *data);
 void signalHandler(int sig);
 
 std::string cmdSEND(std::vector<std::string>& received);
@@ -169,7 +169,9 @@ int main (int argc, char* argv[])
 				 inet_ntoa(cliaddress.sin_addr),
 				 ntohs(cliaddress.sin_port));
 		// clientCommunication(&new_socket); // returnValue can be ignored
-		threads.emplace_back(clientCommunication, new_socket);
+		pthread_t tid;
+		pthread_create(&tid, NULL, clientCommunication, (void *)new int(new_socket));
+		threads.push_back(tid);
 		new_socket = -1;
 	}
 
@@ -204,11 +206,11 @@ void printUsage()
 	printf("Usage: <twmailer-server [port] [path spool_directory]>\n");
 }
 
-void *clientCommunication(int data)
+void *clientCommunication(void *data)
 {
 	char buffer[BUF];
 	int size;
-	int *current_socket = &data;
+	int *current_socket = (int *)data;
 
 	std::string incomplete_message = "";
 
@@ -300,6 +302,7 @@ void *clientCommunication(int data)
 		*current_socket = -1;
 	}
 
+	delete(current_socket);
 	return NULL;
 }
 
@@ -366,7 +369,7 @@ std::string getSha1(const std::string& str)
 inline void exiting()
 {
     for (auto& thread : threads) {
-    	thread.join();
+    	pthread_join(thread, NULL);
     }
 
 	user_handler::getInstance().saveAll();
