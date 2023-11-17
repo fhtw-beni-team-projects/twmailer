@@ -22,7 +22,7 @@ public:
 	~user();
 
 	void addMail(mail* mail);
-	void sendMail(mail* mail, std::vector<std::string> recipients);
+	void sendMail(mail* mail, std::string recipient);
 
 	mail* getMail(u_int id);
 	bool delMail(u_int id);

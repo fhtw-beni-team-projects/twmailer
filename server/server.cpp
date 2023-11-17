@@ -389,7 +389,7 @@ std::string cmdSEND(std::vector<std::string>& received)
 
 	user_handler::getInstance().getOrCreateUser(received.at(1))->sendMail(
 		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3)),
-		{received.at(2)}
+		received.at(2)
 	);
 
 	return "OK\n"; // TODO: error handling

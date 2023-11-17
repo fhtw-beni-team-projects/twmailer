@@ -41,7 +41,7 @@ json mail::mailToJson()
 	jsonfile["id"] = this->id;
 	jsonfile["timestamp"] = this->timestamp;
 	jsonfile["sender"] = this->sender;
-	jsonfile["recipients"] = this->recipients;
+	jsonfile["recipients"] = this->recipient;
 	jsonfile["subject"] = this->subject;
 	jsonfile["filename"] = this->filename;
 	jsonfile["deleted"] = this->deleted;

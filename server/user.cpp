@@ -26,7 +26,7 @@ user::user(fs::path user_data_json) : m()
 		);
 		mail->id = mail_json["id"];
 		mail->sender = mail_json["sender"];
-		mail->recipients = mail_json["recipients"].get<std::vector<std::string>>();
+		mail->recipient = mail_json["recipient"];
 		mail->deleted = mail_json["deleted"];
 		
 		this->inbox.insert(mail);
@@ -84,33 +84,25 @@ void user::addMail(mail* mail)
 	this->user_data["mails"]["received"][std::to_string(mail->id)] = mail->mailToJson();
 }
 
-void user::sendMail(mail* mail, std::vector<std::string> recipients) 
+void user::sendMail(mail* mail, std::string recipient) 
 {
 	std::lock_guard<std::mutex> guard(this->m);
 
-	std::vector<user*> users;
-	for ( auto& name : recipients) {
-		// TODO: error handling for non existing user
-		users.push_back(user_handler::getInstance().getOrCreateUser(name));
-	}
-
 	mail->sender = this->name;
-	mail->recipients = recipients;
+	mail->recipient = recipient;
 
 	mail->id = this->sent.size();
 
 	this->sent.insert(mail);
 	this->user_data["mails"]["sent"][std::to_string(mail->id)] = mail->mailToJson();
 
-	for ( auto& user : users ) {
-		user->addMail(mail);
-	}
+	user_handler::getInstance().getOrCreateUser(recipient)->addMail(mail);
 }
 
 mail* user::getMail(u_int id) 
 {
 	maillist::iterator it = std::find_if(this->inbox.begin(), this->inbox.end(), [id](auto& i){ return (*i)(id); });
-	return it == this->inbox.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it;
+	return it == this->inbox.end() ? nullptr : (*it)->filename.empty() ? nullptr : *it; // TODO: potentially not thread safe, research if iterator points to 
 }
 
 bool user::delMail(u_int id) 
