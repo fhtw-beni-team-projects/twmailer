@@ -2,7 +2,7 @@
 
 #include "mail.h"
 
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <set>
 #include <vector>
@@ -22,7 +22,6 @@ public:
 	~user();
 
 	void addMail(mail* mail);
-	void sendMail(mail* mail, std::string recipient);
 
 	mail* getMail(u_int id);
 	bool delMail(u_int id);
@@ -39,5 +38,5 @@ private:
 	maillist inbox;
 	maillist sent;
 
-	std::mutex m;
+	std::shared_mutex m;
 };

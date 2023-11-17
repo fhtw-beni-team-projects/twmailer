@@ -387,9 +387,8 @@ std::string cmdSEND(std::vector<std::string>& received)
 		}
 	}
 
-	user_handler::getInstance().getOrCreateUser(received.at(1))->sendMail(
-		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3)),
-		received.at(2)
+	user_handler::getInstance().getOrCreateUser(received.at(2))->addMail(
+		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3))
 	);
 
 	return "OK\n"; // TODO: error handling
@@ -429,14 +428,14 @@ std::string cmdREAD(std::vector<std::string>& received)
 		mail->deleted)
 		return "ERR\n";
 
-	/*try */{
+	try {
 		std::string path_str = user_handler::getInstance().getSpoolDir()/"messages"/mail->filename;
-		std::lock_guard<std::mutex> guard(mail->m_file);
+		std::unique_lock<std::mutex> lock(mail->m_file);
 		response.append(read_file(path_str)).append("\n");
 	}
-	/*catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
+	catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
 		return "ERR\n";
-	}*/
+	}
 
 	return response;
 }
