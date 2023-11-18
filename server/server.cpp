@@ -3,6 +3,8 @@
 
 #include "mail.h"
 
+#include <algorithm>
+#include <ranges>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -21,7 +23,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <algorithm>
 
 #include <locale>
 
@@ -500,5 +501,6 @@ bool ichar_equals(char a, char b)
 
 bool iequals(std::string_view lhs, std::string_view rhs)
 {
-    return std::ranges::equal(lhs, rhs, ichar_equals);
+    // return std::ranges::equal(lhs, rhs, ichar_equals);
+    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), ichar_equals);
 }
