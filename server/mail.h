@@ -17,9 +17,9 @@ struct mail {
 	/* metadata */
 	u_int id;
 	int64_t timestamp;
+	std::string subject;
 	std::string sender;
 	std::string recipient;
-	std::string subject;
 
 	bool deleted;
 
