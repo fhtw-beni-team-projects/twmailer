@@ -35,7 +35,8 @@
 #define BUF 1024
 
 enum commands {
-	SEND = 1,
+	LOGIN = 1,
+	SEND,
 	LIST,
 	READ,
 	DEL,
@@ -62,6 +63,7 @@ std::string getSha1(const std::string& p_arg);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
+std::string cmdLOGIN(std::vector<std::string>& received);
 std::string cmdSEND(std::vector<std::string>& received);
 std::string cmdLIST(std::vector<std::string>& received);
 std::string cmdREAD(std::vector<std::string>& received);
@@ -253,7 +255,8 @@ void *clientCommunication(void *data)
 		enum commands cmd;
 
 		// can't wait for reflections (maybe c++26?)
-		if (iequals(lines.at(0), "SEND")) cmd = SEND;
+		if (iequals(lines.at(0), "LOGIN")) cmd = LOGIN;
+		else if (iequals(lines.at(0), "SEND")) cmd = SEND;
 		else if (iequals(lines.at(0), "LIST")) cmd = LIST;
 		else if (iequals(lines.at(0), "READ")) cmd = READ;
 		else if (iequals(lines.at(0), "DEL")) cmd = DEL;
@@ -261,26 +264,29 @@ void *clientCommunication(void *data)
 		else continue; // TODO: error message
 
 		switch (cmd) {
-			case SEND:
-				if (lines.size() < 5 || lines.back().compare(".") != 0) {
-					incomplete_message = buffer;
-					continue; // issues if command end is never received
-				}
-
-				response = cmdSEND(lines);
-				break;
-			case LIST:
-				response = cmdLIST(lines);
-				break;
-			case READ:
-				response = cmdREAD(lines);
-				break;
-			case DEL:
-				response = cmdDEL(lines);
-				break;
-			case QUIT:
-				break;
+		case LOGIN:
+			response = cmdLOGIN(lines);
+			break;
+		case SEND:
+			if (lines.size() < 5 || lines.back().compare(".") != 0) {
+				incomplete_message = buffer;
+				continue; // issues if command end is never received
 			}
+
+			response = cmdSEND(lines);
+			break;
+		case LIST:
+			response = cmdLIST(lines);
+			break;
+		case READ:
+			response = cmdREAD(lines);
+			break;
+		case DEL:
+			response = cmdDEL(lines);
+			break;
+		case QUIT:
+			break;
+		}
 
 		if (send(*current_socket, response.c_str(), response.size(), 0) == -1) {
 			perror("send answer failed");
@@ -376,8 +382,15 @@ inline void exiting()
 	printf("Saving...	\n");
 }
 
+std::string cmdLOGIN(std::vector<std::string>& received)
+{
+	// code
+	return "";
+}	
+
 std::string cmdSEND(std::vector<std::string>& received)
 {
+	// TODO: change sender to be implicit from currently logged in
 	if (received.at(3).length() > 80)
 		return "ERR\n";
 
@@ -396,8 +409,10 @@ std::string cmdSEND(std::vector<std::string>& received)
 
 std::string cmdLIST(std::vector<std::string>& received)
 {
+	// TODO: change user to be implicit from currently logged in
 	maillist inbox;
 	user* user;
+
 	if (received.size() < 2 || (user = user_handler::getInstance().getUser(received.at(1))) == nullptr)
 		return "0\n";
 		
@@ -414,6 +429,7 @@ std::string cmdLIST(std::vector<std::string>& received)
 
 std::string cmdREAD(std::vector<std::string>& received)
 {
+	// TODO: change user to be implicit from currently logged in
 	std::string response = "OK\n";
 
 	user* user;
@@ -442,6 +458,7 @@ std::string cmdREAD(std::vector<std::string>& received)
 
 std::string cmdDEL(std::vector<std::string>& received)
 {
+	// TODO: change user to be implicit from currently logged in
 	user* user;
 
 	char* p;
