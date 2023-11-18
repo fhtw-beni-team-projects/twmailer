@@ -23,7 +23,7 @@ struct mail {
 
 	bool deleted;
 
-	mail(std::string filename, std::string subject);
+	mail(std::string filename, std::string subject, std::string sender);
 	mail(std::string filename, int64_t timestamp, std::string subject);
 
 	bool operator()(const u_int& id) const {

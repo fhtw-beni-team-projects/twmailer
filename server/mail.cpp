@@ -1,10 +1,11 @@
 #include "mail.h"
 #include <mutex>
 
-mail::mail(std::string filename, std::string subject) :
+mail::mail(std::string filename, std::string subject, std::string sender) :
 	filename(filename),
 	timestamp(std::time(NULL)),
 	subject(subject),
+	sender(sender),
 	deleted(false),
 	m_file()
 {}

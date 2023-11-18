@@ -390,7 +390,7 @@ std::string cmdLOGIN(std::vector<std::string>& received)
 
 std::string cmdSEND(std::vector<std::string>& received)
 {
-	// TODO: change sender to be implicit from currently logged in
+	// TODO: change sender to be implicit from currently logged in; replace received.at(1) and move all other received one forward
 	if (received.at(3).length() > 80)
 		return "ERR\n";
 
@@ -401,7 +401,7 @@ std::string cmdSEND(std::vector<std::string>& received)
 	}
 
 	user_handler::getInstance().getOrCreateUser(received.at(2))->addMail(
-		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3))
+		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3), received.at(1))
 	);
 
 	return "OK\n"; // TODO: error handling
@@ -409,7 +409,7 @@ std::string cmdSEND(std::vector<std::string>& received)
 
 std::string cmdLIST(std::vector<std::string>& received)
 {
-	// TODO: change user to be implicit from currently logged in
+	// TODO: change user to be implicit from currently logged in; replace received.at(1)
 	maillist inbox;
 	user* user;
 
@@ -429,7 +429,7 @@ std::string cmdLIST(std::vector<std::string>& received)
 
 std::string cmdREAD(std::vector<std::string>& received)
 {
-	// TODO: change user to be implicit from currently logged in
+	// TODO: change user to be implicit from currently logged in; replace received.at(1) and move received.at(2) one forward
 	std::string response = "OK\n";
 
 	user* user;
@@ -458,7 +458,7 @@ std::string cmdREAD(std::vector<std::string>& received)
 
 std::string cmdDEL(std::vector<std::string>& received)
 {
-	// TODO: change user to be implicit from currently logged in
+	// TODO: change user to be implicit from currently logged in; replace received.at(1) and move received.at(2) one forward
 	user* user;
 
 	char* p;
