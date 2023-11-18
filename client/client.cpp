@@ -18,7 +18,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 enum commands {
-	SEND = 1,
+	LOGIN = 1,
+	SEND,
 	LIST,
 	READ,
 	DEL,
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
 	*/
 
 	do {
-		printf("Please specify a command (SEND, LIST, READ, DEL, QUIT): ");
+		printf("Please specify a command (SEND, LIST, READ, DEL, QUIT, LOGIN): ");
 		if (fgets(buffer, BUF - 1, stdin) != NULL)
 		{
 			size = strlen(buffer);
@@ -124,7 +125,8 @@ int main(int argc, char **argv)
 			}
 
 			enum commands cmd;
-			if (strcmp(buffer, "SEND") == 0) cmd = SEND;
+			if (strcmp(buffer, "LOGIN") == 0) cmd = LOGIN;
+			else if (strcmp(buffer, "SEND") == 0) cmd = SEND;
 			else if (strcmp(buffer, "LIST") == 0) cmd = LIST;
 			else if (strcmp(buffer, "READ") == 0) cmd = READ;
 			else if (strcmp(buffer, "DEL") == 0) cmd = DEL;
@@ -133,6 +135,15 @@ int main(int argc, char **argv)
 			char username[BUF], msgNum[10];
 
 			switch (cmd) {
+			case LOGIN: 
+				char ldapUsername[BUF], ldapPassword[BUF];
+    			printf("LDAP Username: ");
+    			fgets(ldapUsername, BUF - 1, stdin);
+    			printf("Password: ");
+    			fgets(ldapPassword, BUF - 1, stdin);
+    			snprintf(buffer, sizeof(buffer), "LOGIN\n%s%s", ldapUsername, ldapPassword);
+    			break;
+
 			case SEND:
 				char sender[BUF], receiver[BUF], subject[81], message[BUF * 10];
 				printf("Sender: ");

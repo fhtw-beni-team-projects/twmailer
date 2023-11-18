@@ -3,6 +3,10 @@
 
 #include "mail.h"
 
+
+#include <ldap.h>
+
+
 #include <algorithm>
 #include <ranges>
 #include <cstddef>
@@ -32,6 +36,9 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <openssl/sha.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define BUF 1024
 
@@ -385,8 +392,46 @@ inline void exiting()
 
 std::string cmdLOGIN(std::vector<std::string>& received)
 {
-	// code
-	return "";
+	if (received.size() < 3) {
+        return "ERR\n";
+    }
+
+	const char* ldapUri = "ldap://ldap.technikum-wien.at:389";
+    const int ldapVersion = LDAP_VERSION3;
+    LDAP* ldapHandle;
+    int rc = ldap_initialize(&ldapHandle, ldapUri);
+    if (rc != LDAP_SUCCESS) {
+        return "ERR\n";
+    }
+
+	rc = ldap_set_option(ldapHandle, LDAP_OPT_PROTOCOL_VERSION, &ldapVersion);
+    if (rc != LDAP_OPT_SUCCESS) {
+        ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+        return "ERR\n"; 
+    }
+
+	rc = ldap_start_tls_s(ldapHandle, NULL, NULL);
+    if (rc != LDAP_SUCCESS) {
+        ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+        return "ERR\n";
+    }
+
+	std::string ldapBindUser = "uid=" + received[1] + ",ou=people,dc=technikum-wien,dc=at";
+    std::string ldapBindPassword = received[2];
+
+	BerValue bindCredentials;
+    bindCredentials.bv_val = (char*)ldapBindPassword.c_str();
+    bindCredentials.bv_len = ldapBindPassword.length();
+    rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, NULL);
+    if (rc != LDAP_SUCCESS) {
+        ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+        return "ERR\n"; 
+    }
+	
+
+	ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+	
+	return "OK\n";
 }	
 
 std::string cmdSEND(std::vector<std::string>& received)
