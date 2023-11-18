@@ -108,6 +108,10 @@ int main(int argc, char **argv)
 	}
 	*/
 
+	bool isLoggedIn = false;
+    std::string loggedInUsername;
+    std::string loggedInPassword;
+
 	do {
 		printf("Please specify a command (SEND, LIST, READ, DEL, QUIT, LOGIN): ");
 		if (fgets(buffer, BUF - 1, stdin) != NULL)
@@ -136,56 +140,72 @@ int main(int argc, char **argv)
 
 			switch (cmd) {
 			case LOGIN: 
-				char ldapUsername[BUF], ldapPassword[BUF];
-    			printf("LDAP Username: ");
-    			fgets(ldapUsername, BUF - 1, stdin);
-    			printf("Password: ");
-    			fgets(ldapPassword, BUF - 1, stdin);
-    			snprintf(buffer, sizeof(buffer), "LOGIN\n%s%s", ldapUsername, ldapPassword);
-    			break;
+                if (!isLoggedIn) {
+                    printf("LDAP Username: ");
+                    fgets(buffer, BUF - 1, stdin);
+                    loggedInUsername = buffer;
+                    loggedInUsername.pop_back(); 
+
+                    printf("Password: ");
+                    fgets(buffer, BUF - 1, stdin);
+                    loggedInPassword = buffer;
+                    loggedInPassword.pop_back(); 
+
+                    snprintf(buffer, sizeof(buffer), "LOGIN\n%s\n%s\n", loggedInUsername.c_str(), loggedInPassword.c_str());
+                    isLoggedIn = true;
+                } else {
+                    printf("Already logged in as %s\n", loggedInUsername.c_str());
+                }
+                break;
 
 			case SEND:
-				char sender[BUF], receiver[BUF], subject[81], message[BUF * 10];
-				printf("Sender: ");
-				fgets(sender, BUF - 1, stdin);
-				printf("Receiver: ");
-				fgets(receiver, BUF - 1, stdin);
-				printf("Subject: ");
-				fgets(subject, 80, stdin);
-				printf("Message (send by typing \".\" in a seperate line): ");
-				char line[BUF];
-				message[0] = '\0';
-				while (true)
-				{
-					fgets(line, BUF - 1, stdin);
-					if (strcmp(line, ".\n") == 0)
-						break;
-					strcat(message, line);
-				}
-				snprintf(buffer, sizeof(buffer), "SEND\n%s%s%s%s.\n", sender, receiver, subject, message);
-				break;
+				if (isLoggedIn) {
+					char receiver[BUF], subject[81], message[BUF * 10];
+					printf("Receiver: ");
+					fgets(receiver, BUF - 1, stdin);
+					printf("Subject: ");
+					fgets(subject, 80, stdin);
+					printf("Message (send by typing \".\" in a seperate line): ");
+					char line[BUF];
+					message[0] = '\0';
+					while (true) {
+						fgets(line, BUF - 1, stdin);
+						if (strcmp(line, ".\n") == 0)
+							break;
+						strcat(message, line);
+					}
+					snprintf(buffer, sizeof(buffer), "SEND\n%s\n%s\n%s\n%s.\n", loggedInUsername.c_str(), receiver, subject, message);
+        		} else {
+            		printf("Please login first.\n");
+       			}
+       			break;
 			case LIST:
-				char username[BUF];
-				printf("Username: ");
-				fgets(username, BUF - 1, stdin);
-				snprintf(buffer, sizeof(buffer), "LIST\n%s", username);
-				break;
+				if (isLoggedIn) {
+            		snprintf(buffer, sizeof(buffer), "LIST\n%s", loggedInUsername.c_str());
+        		} else {
+            		printf("Please login first.\n");
+       			}
+        		break;
 			case READ:
-				printf("Username: ");
-				fgets(username, BUF - 1, stdin);
-				printf("Message Number: ");
-				fgets(msgNum, 9, stdin);
-				snprintf(buffer, sizeof(buffer), "READ\n%s%s", username, msgNum);
-				break;
+				if (isLoggedIn) {
+            		printf("Message Number: ");
+            		fgets(msgNum, 9, stdin);
+            		snprintf(buffer, sizeof(buffer), "READ\n%s\n%s", loggedInUsername.c_str(), msgNum);
+        		} else {
+            		printf("Please login first.\n");
+        		}
+        			break;
 			case DEL:
-				printf("Username: ");
-				fgets(username, BUF - 1, stdin);
-				printf("Message Number: ");
-				fgets(msgNum, 9, stdin);
-				snprintf(buffer, sizeof(buffer), "DEL\n%s%s", username, msgNum);
-				break;
+				if (isLoggedIn) {
+            		printf("Message Number: ");
+            		fgets(msgNum, 9, stdin);
+            		snprintf(buffer, sizeof(buffer), "DEL\n%s\n%s", loggedInUsername.c_str(), msgNum);
+       			} else {
+            		printf("Please login first.\n");
+       			}
+       			break;
 			case QUIT:
-				// will break out of loop before quit
+			
 				break;
 			}
 		

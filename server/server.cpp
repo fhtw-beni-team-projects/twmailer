@@ -72,10 +72,11 @@ void *clientCommunication(void *data);
 void signalHandler(int sig);
 
 std::string cmdLOGIN(std::vector<std::string>& received);
-std::string cmdSEND(std::vector<std::string>& received);
-std::string cmdLIST(std::vector<std::string>& received);
-std::string cmdREAD(std::vector<std::string>& received);
-std::string cmdDEL(std::vector<std::string>& received);
+std::string cmdSEND(std::vector<std::string>& received, const std::string& loggedInUsername);
+std::string cmdLIST(std::vector<std::string>& received, const std::string& loggedInUsername);
+std::string cmdREAD(std::vector<std::string>& received, const std::string& loggedInUsername);
+std::string cmdDEL(std::vector<std::string>& received, const std::string& loggedInUsername);
+
 
 inline void exiting();
 inline std::string read_file(std::string_view path);
@@ -259,6 +260,11 @@ void *clientCommunication(void *data)
 			lines.push_back(line);
 		}
 
+		std::vector<std::string> received;
+		
+		while (std::getline(ss, line, '\n')) {
+    		received.push_back(line);
+		}
 
 		enum commands cmd;
 
@@ -271,26 +277,27 @@ void *clientCommunication(void *data)
 		else if (iequals(lines.at(0), "QUIT")) break;
 		else continue; // TODO: error message
 
+		std::string loggedInUsername;
+
 		switch (cmd) {
 		case LOGIN:
-			response = cmdLOGIN(lines);
+			loggedInUsername = cmdLOGIN(received);
 			break;
 		case SEND:
-			if (lines.size() < 5 || lines.back().compare(".") != 0) {
-				incomplete_message = buffer;
-				continue; // issues if command end is never received
-			}
-
-			response = cmdSEND(lines);
-			break;
+			if (received.size() < 5 || received.back().compare(".") != 0) {
+            	incomplete_message = buffer;
+            	continue; 
+        		}
+        	response = cmdSEND(received, loggedInUsername);
+        	break;
 		case LIST:
-			response = cmdLIST(lines);
+			response = cmdLIST(received, loggedInUsername);
 			break;
 		case READ:
-			response = cmdREAD(lines);
+			response = cmdREAD(received, loggedInUsername);
 			break;
 		case DEL:
-			response = cmdDEL(lines);
+			response = cmdDEL(received, loggedInUsername);
 			break;
 		case QUIT:
 			break;
@@ -434,88 +441,93 @@ std::string cmdLOGIN(std::vector<std::string>& received)
 	return "OK\n";
 }	
 
-std::string cmdSEND(std::vector<std::string>& received)
-{
-	// TODO: change sender to be implicit from currently logged in; replace received.at(1) and move all other received one forward
-	if (received.at(3).length() > 80)
-		return "ERR\n";
 
-	if (received.size() > 5) {
-		for (std::vector<std::string>::iterator it = received.begin() + 5; it != received.end() && *it != "."; it++) {
-			received.at(4).append("\n").append(*it);
-		}
-	}
+std::string cmdSEND(std::vector<std::string>& received, const std::string& loggedInUsername) {
 
-	user_handler::getInstance().getOrCreateUser(received.at(2))->addMail(
-		new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", received.at(4)), received.at(3), received.at(1))
-	);
+    if (loggedInUsername.empty() || received.size() < 4) {
+        return "ERR\n";
+    }
+
+	std::string receiver = received.at(1);
+    std::string subject = received.at(2);
+    std::string message = received.at(3);
+
+	if (subject.length() > 80) {
+        return "ERR\n";
+    }
+
+	user_handler::getInstance().getOrCreateUser(receiver)->addMail(
+        new struct mail(saveToFile(user_handler::getInstance().getSpoolDir()/"messages", message), subject, loggedInUsername)
+    );
 
 	return "OK\n"; // TODO: error handling
+
 }
 
-std::string cmdLIST(std::vector<std::string>& received)
-{
-	// TODO: change user to be implicit from currently logged in; replace received.at(1)
-	maillist inbox;
-	user* user;
+std::string cmdLIST(std::vector<std::string>& received, const std::string& loggedInUsername) {
+    if (loggedInUsername.empty()) {
+        return "ERR\n";
+    }
 
-	if (received.size() < 2 || (user = user_handler::getInstance().getUser(received.at(1))) == nullptr)
-		return "0\n";
-		
-	inbox = user->getMails();
-	std::string response = std::to_string(std::count_if(inbox.begin(), inbox.end(), [](auto& mail) { return !mail->deleted; })) + "\n";
-	for ( auto mail : inbox ) {
-		if (mail->deleted)
-			continue;
-		response.append(std::to_string(mail->id)).append(": ").append(mail->subject).append("\n");
-	}
+    user* currentUser = user_handler::getInstance().getUser(loggedInUsername);
+    if (currentUser == nullptr) {
+        return "ERR\n";
+    }
 
-	return response;
+    maillist inbox = currentUser->getMails();
+    std::string response = std::to_string(std::count_if(inbox.begin(), inbox.end(), [](auto& mail) { return !mail->deleted; })) + "\n";
+    for (auto& mail : inbox) {
+        if (!mail->deleted) {
+            response.append(std::to_string(mail->id)).append(": ").append(mail->subject).append("\n");
+        }
+    }
+
+    return response;
 }
 
-std::string cmdREAD(std::vector<std::string>& received)
-{
-	// TODO: change user to be implicit from currently logged in; replace received.at(1) and move received.at(2) one forward
-	std::string response = "OK\n";
+std::string cmdREAD(std::vector<std::string>& received, const std::string& loggedInUsername) {
+    if (loggedInUsername.empty() || received.size() < 2) {
+        return "ERR\n";
+    }
 
-	user* user;
-	mail* mail;
+    char* p;
+    long mailId = strtol(received.at(1).c_str(), &p, 10);
+    if (*p != 0) { 
+        return "ERR\n";
+    }
 
-	char* p;
+    user* currentUser = user_handler::getInstance().getUser(loggedInUsername);
+    if (currentUser == nullptr) {
+        return "ERR\n";
+    }
 
-	if(received.size() < 3 ||
-		!isInteger(received.at(2)) ||
-		(user = user_handler::getInstance().getUser(received.at(1))) == nullptr ||
-		(mail = user->getMail(strtoul(received.at(2).c_str(), &p, 10))) == nullptr ||
-		mail->deleted)
-		return "ERR\n";
+    mail* selectedMail = currentUser->getMail(mailId);
+    if (selectedMail == nullptr || selectedMail->deleted) {
+        return "ERR\n";
+    }
 
-	try {
-		std::string path_str = user_handler::getInstance().getSpoolDir()/"messages"/mail->filename;
-		std::unique_lock<std::mutex> lock(mail->m_file);
-		response.append(read_file(path_str)).append("\n");
-	}
-	catch (...) { // TODO: more specific error handling - then again, it will respond with ERR either way
-		return "ERR\n";
-	}
-
-	return response;
+    std::string mailContent = read_file((user_handler::getInstance().getSpoolDir() / "messages" / selectedMail->filename).string());
+    return "OK\n" + mailContent;
 }
 
-std::string cmdDEL(std::vector<std::string>& received)
-{
-	// TODO: change user to be implicit from currently logged in; replace received.at(1) and move received.at(2) one forward
-	user* user;
+std::string cmdDEL(std::vector<std::string>& received, const std::string& loggedInUsername) {
+    if (loggedInUsername.empty() || received.size() < 2) {
+        return "ERR\n";
+    }
 
-	char* p;
+    char* p;
+    long mailId = strtol(received.at(1).c_str(), &p, 10);
+    if (*p != 0) { 
+        return "ERR\n";
+    }
 
-	if(received.size() < 3 ||
-		!isInteger(received.at(2)) ||
-		(user = user_handler::getInstance().getUser(received.at(1))) == nullptr ||
-		(user->delMail(strtoul(received.at(2).c_str(), &p, 10))) == false)
-		return "ERR\n";
+    user* currentUser = user_handler::getInstance().getUser(loggedInUsername);
+    if (currentUser == nullptr) {
+        return "ERR\n";
+    }
 
-	return "OK\n";
+    bool deleteResult = currentUser->delMail(mailId);
+    return deleteResult ? "OK\n" : "ERR\n";
 }
 
 // https://stackoverflow.com/a/116220
