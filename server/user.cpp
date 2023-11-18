@@ -25,6 +25,7 @@ user::user(fs::path user_data_json) : m()
 			mail_json["subject"]
 		);
 		mail->id = mail_json["id"];
+		mail->sender = mail_json["sender"];
 		mail->recipient = mail_json["recipient"];
 		mail->deleted = mail_json["deleted"];
 		

@@ -1,5 +1,4 @@
 #include "mail.h"
-#include <cstdio>
 #include <mutex>
 
 mail::mail(std::string filename, std::string subject) :
@@ -41,6 +40,7 @@ json mail::mailToJson()
 
 	jsonfile["id"] = this->id;
 	jsonfile["timestamp"] = this->timestamp;
+	jsonfile["sender"] = this->sender;
 	jsonfile["recipient"] = this->recipient;
 	jsonfile["subject"] = this->subject;
 	jsonfile["filename"] = this->filename;
