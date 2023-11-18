@@ -24,7 +24,7 @@ struct mail {
 	bool deleted;
 
 	mail(std::string filename, std::string subject, std::string sender);
-	mail(std::string filename, int64_t timestamp, std::string subject);
+	mail(std::string filename, int64_t timestamp, std::string subject, std::string sender);
 
 	bool operator()(const u_int& id) const {
 		return id == this->id;

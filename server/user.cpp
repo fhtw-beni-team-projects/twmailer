@@ -22,10 +22,10 @@ user::user(fs::path user_data_json) : m()
 		mail* mail = new struct mail(
 			mail_json["filename"],
 			mail_json["timestamp"],
-			mail_json["subject"]
+			mail_json["subject"],
+			mail_json["sender"]
 		);
 		mail->id = mail_json["id"];
-		mail->sender = mail_json["sender"];
 		mail->recipient = mail_json["recipient"];
 		mail->deleted = mail_json["deleted"];
 		

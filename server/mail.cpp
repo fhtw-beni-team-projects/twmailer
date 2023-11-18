@@ -10,10 +10,11 @@ mail::mail(std::string filename, std::string subject, std::string sender) :
 	m_file()
 {}
 
-mail::mail(std::string filename, int64_t timestamp, std::string subject) :
+mail::mail(std::string filename, int64_t timestamp, std::string subject, std::string sender) :
 	filename(filename),
 	timestamp(timestamp),
 	subject(subject),
+	sender(sender),
 	deleted(false),
 	m_file()
 {}
