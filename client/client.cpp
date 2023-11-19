@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 
 			case SEND:
 				if (!isLoggedIn) {
-					printf("Please login first.\n");
+					printf("Please login first.\n\n");
 					continue;;
 				}
 				char receiver[BUF], subject[81], message[BUF * 10];
@@ -180,14 +180,14 @@ int main(int argc, char **argv)
 				snprintf(buffer, sizeof(buffer), "SEND\n%s\n%s\n%s\n%s.\n", loggedInUsername.c_str(), receiver, subject, message);
        			break;
 			case LIST:
-				if (isLoggedIn) {
+				if (!isLoggedIn) {
             		printf("Please login first.\n");
             		continue;
             	}
             	snprintf(buffer, sizeof(buffer), "LIST\n%s", loggedInUsername.c_str());
         		break;
 			case READ:
-				if (isLoggedIn) {
+				if (!isLoggedIn) {
             		printf("Please login first.\n");
             		continue;
             	}
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
             	snprintf(buffer, sizeof(buffer), "READ\n%s\n%s", loggedInUsername.c_str(), msgNum);
         		break;
 			case DEL:
-				if (isLoggedIn) {
+				if (!isLoggedIn) {
             		printf("Please login first.\n");
             		continue;
             	}

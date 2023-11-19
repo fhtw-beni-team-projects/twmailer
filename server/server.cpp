@@ -426,8 +426,7 @@ std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUs
 	BerValue bindCredentials;
     bindCredentials.bv_val = (char*) ldapBindPassword.c_str();
     bindCredentials.bv_len = ldapBindPassword.length();
-    BerValue *servercredp;
-    rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, &servercredp);
+    rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, NULL);
     if (rc != LDAP_SUCCESS) {
         ldap_unbind_ext_s(ldapHandle, NULL, NULL);
         return "ERR\n"; 
