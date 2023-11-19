@@ -113,10 +113,9 @@ int main(int argc, char **argv)
 
 	bool isLoggedIn = false;
     std::string loggedInUsername;
-    std::string loggedInPassword;
 
 	do {
-		printf("Please specify a command (LOGIN, SEND, LIST, READ, DEL, QUIT): ");
+		printf("Please specify a command (%s): ", isLoggedIn ? "SEND, LIST, READ, DEL, QUIT" : "LOGIN, QUIT");
 		if (fgets(buffer, BUF - 1, stdin) != NULL) {
 			size = strlen(buffer);
 			if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
@@ -138,7 +137,8 @@ int main(int argc, char **argv)
 			else if (strcmp(buffer, "DEL") == 0) cmd = DEL;
 			else if (strcmp(buffer, "QUIT") == 0) break;
 
-			char username[BUF], msgNum[10];
+			char msgNum[10];
+			std::string username, password;
 
 			switch (cmd) {
 			case LOGIN: 
@@ -148,14 +148,13 @@ int main(int argc, char **argv)
                 }
                 printf("LDAP Username: ");
                 fgets(buffer, BUF - 1, stdin);
-                loggedInUsername = buffer;
-                loggedInUsername.pop_back(); 
+                username = buffer;
+                username.pop_back(); 
 
                 printf("Password: ");
-                loggedInPassword = getpass();
+                password = getpass();
 
-                snprintf(buffer, sizeof(buffer), "LOGIN\n%s\n%s\n", loggedInUsername.c_str(), loggedInPassword.c_str());
-                isLoggedIn = true;
+                snprintf(buffer, sizeof(buffer), "LOGIN\n%s\n%s\n", username.c_str(), password.c_str());
                 break;
 
 			case SEND:
@@ -177,14 +176,15 @@ int main(int argc, char **argv)
 						break;
 					strcat(message, line);
 				}
-				snprintf(buffer, sizeof(buffer), "SEND\n%s\n%s\n%s\n%s.\n", loggedInUsername.c_str(), receiver, subject, message);
+				snprintf(buffer, sizeof(buffer), "SEND\n%s%s%s.\n",  receiver, subject, message);
        			break;
 			case LIST:
 				if (!isLoggedIn) {
             		printf("Please login first.\n");
             		continue;
             	}
-            	snprintf(buffer, sizeof(buffer), "LIST\n%s", loggedInUsername.c_str());
+            	snprintf(buffer, sizeof(buffer), "LIST\n");
+				printf("%s", buffer);
         		break;
 			case READ:
 				if (!isLoggedIn) {
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
             	}
             	printf("Message Number: ");
             	fgets(msgNum, 9, stdin);
-            	snprintf(buffer, sizeof(buffer), "READ\n%s\n%s", loggedInUsername.c_str(), msgNum);
+            	snprintf(buffer, sizeof(buffer), "READ\n%s", msgNum);
         		break;
 			case DEL:
 				if (!isLoggedIn) {
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
             	}
             	printf("Message Number: ");
             	fgets(msgNum, 9, stdin);
-            	snprintf(buffer, sizeof(buffer), "DEL\n%s\n%s", loggedInUsername.c_str(), msgNum);
+            	snprintf(buffer, sizeof(buffer), "DEL\n%s", msgNum);
        			break;
 			case QUIT:
 				// should never be reached;
@@ -258,6 +258,12 @@ int main(int argc, char **argv)
 			{
 				buffer[size] = '\0';
 				printf("<< %s\n", buffer); // ignore error
+
+				if (cmd == LOGIN && strcmp("OK\n", buffer) == 0) {
+					loggedInUsername = username;
+             	    isLoggedIn = true;
+				}
+
 				/*if (strcmp("OK", buffer) != 0) // needs proper verification, since responses vary between commands
 				{
 					fprintf(stderr, "<< Server error occured, abort\n");

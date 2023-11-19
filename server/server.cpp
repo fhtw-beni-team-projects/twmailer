@@ -225,6 +225,8 @@ void *clientCommunication(void *data)
 
 	std::string incomplete_message = "";
 
+	std::string loggedInUsername;
+
 	do {
 		std::string response;
 
@@ -270,8 +272,6 @@ void *clientCommunication(void *data)
 		else if (iequals(lines.at(0), "DEL")) cmd = DEL;
 		else if (iequals(lines.at(0), "QUIT")) break;
 		else continue; // TODO: error message
-
-		std::string loggedInUsername;
 
 		switch (cmd) {
 		case LOGIN:
@@ -463,12 +463,13 @@ std::string cmdSEND(std::vector<std::string>& received, const std::string& logge
 
 std::string cmdLIST(std::vector<std::string>& received, const std::string& loggedInUsername) {
     if (loggedInUsername.empty()) {
+    	printf("%s %zu\n", loggedInUsername.c_str(), received.size());
         return "ERR\n";
     }
 
     user* currentUser = user_handler::getInstance().getUser(loggedInUsername);
     if (currentUser == nullptr) {
-        return "ERR\n";
+        return "0\n";
     }
 
     maillist inbox = currentUser->getMails();
@@ -484,6 +485,7 @@ std::string cmdLIST(std::vector<std::string>& received, const std::string& logge
 
 std::string cmdREAD(std::vector<std::string>& received, const std::string& loggedInUsername) {
     if (loggedInUsername.empty() || received.size() < 2) {
+    	printf("%s %zu\n", loggedInUsername.c_str(), received.size());
         return "ERR\n";
     }
 
@@ -509,6 +511,7 @@ std::string cmdREAD(std::vector<std::string>& received, const std::string& logge
 
 std::string cmdDEL(std::vector<std::string>& received, const std::string& loggedInUsername) {
     if (loggedInUsername.empty() || received.size() < 2) {
+    	printf("%s %zu\n", loggedInUsername.c_str(), received.size());
         return "ERR\n";
     }
 
