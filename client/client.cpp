@@ -10,6 +10,8 @@
 #include <string>
 #include <string.h>
 
+#include <termios.h>
+
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
@@ -28,6 +30,7 @@ enum commands {
 
 inline bool isInteger(const std::string & s);
 void printUsage();
+const std::string getpass();
 
 int main(int argc, char **argv)
 {
@@ -113,9 +116,8 @@ int main(int argc, char **argv)
     std::string loggedInPassword;
 
 	do {
-		printf("Please specify a command (SEND, LIST, READ, DEL, QUIT, LOGIN): ");
-		if (fgets(buffer, BUF - 1, stdin) != NULL)
-		{
+		printf("Please specify a command (LOGIN, SEND, LIST, READ, DEL, QUIT): ");
+		if (fgets(buffer, BUF - 1, stdin) != NULL) {
 			size = strlen(buffer);
 			if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
 			{
@@ -140,72 +142,70 @@ int main(int argc, char **argv)
 
 			switch (cmd) {
 			case LOGIN: 
-                if (!isLoggedIn) {
-                    printf("LDAP Username: ");
-                    fgets(buffer, BUF - 1, stdin);
-                    loggedInUsername = buffer;
-                    loggedInUsername.pop_back(); 
-
-                    printf("Password: ");
-                    fgets(buffer, BUF - 1, stdin);
-                    loggedInPassword = buffer;
-                    loggedInPassword.pop_back(); 
-
-                    snprintf(buffer, sizeof(buffer), "LOGIN\n%s\n%s\n", loggedInUsername.c_str(), loggedInPassword.c_str());
-                    isLoggedIn = true;
-                } else {
+                if (isLoggedIn) {
                     printf("Already logged in as %s\n", loggedInUsername.c_str());
+                    continue;
                 }
+                printf("LDAP Username: ");
+                fgets(buffer, BUF - 1, stdin);
+                loggedInUsername = buffer;
+                loggedInUsername.pop_back(); 
+
+                printf("Password: ");
+                loggedInPassword = getpass();
+
+                snprintf(buffer, sizeof(buffer), "LOGIN\n%s\n%s\n", loggedInUsername.c_str(), loggedInPassword.c_str());
+                isLoggedIn = true;
                 break;
 
 			case SEND:
-				if (isLoggedIn) {
-					char receiver[BUF], subject[81], message[BUF * 10];
-					printf("Receiver: ");
-					fgets(receiver, BUF - 1, stdin);
-					printf("Subject: ");
-					fgets(subject, 80, stdin);
-					printf("Message (send by typing \".\" in a seperate line): ");
-					char line[BUF];
-					message[0] = '\0';
-					while (true) {
-						fgets(line, BUF - 1, stdin);
-						if (strcmp(line, ".\n") == 0)
-							break;
-						strcat(message, line);
-					}
-					snprintf(buffer, sizeof(buffer), "SEND\n%s\n%s\n%s\n%s.\n", loggedInUsername.c_str(), receiver, subject, message);
-        		} else {
-            		printf("Please login first.\n");
-       			}
+				if (!isLoggedIn) {
+					printf("Please login first.\n");
+					continue;;
+				}
+				char receiver[BUF], subject[81], message[BUF * 10];
+				printf("Receiver: ");
+				fgets(receiver, BUF - 1, stdin);
+				printf("Subject: ");
+				fgets(subject, 80, stdin);
+				printf("Message (send by typing \".\" in a seperate line): ");
+				char line[BUF];
+				message[0] = '\0';
+				while (true) {
+					fgets(line, BUF - 1, stdin);
+					if (strcmp(line, ".\n") == 0)
+						break;
+					strcat(message, line);
+				}
+				snprintf(buffer, sizeof(buffer), "SEND\n%s\n%s\n%s\n%s.\n", loggedInUsername.c_str(), receiver, subject, message);
        			break;
 			case LIST:
 				if (isLoggedIn) {
-            		snprintf(buffer, sizeof(buffer), "LIST\n%s", loggedInUsername.c_str());
-        		} else {
             		printf("Please login first.\n");
-       			}
+            		continue;
+            	}
+            	snprintf(buffer, sizeof(buffer), "LIST\n%s", loggedInUsername.c_str());
         		break;
 			case READ:
 				if (isLoggedIn) {
-            		printf("Message Number: ");
-            		fgets(msgNum, 9, stdin);
-            		snprintf(buffer, sizeof(buffer), "READ\n%s\n%s", loggedInUsername.c_str(), msgNum);
-        		} else {
             		printf("Please login first.\n");
-        		}
-        			break;
+            		continue;
+            	}
+            	printf("Message Number: ");
+            	fgets(msgNum, 9, stdin);
+            	snprintf(buffer, sizeof(buffer), "READ\n%s\n%s", loggedInUsername.c_str(), msgNum);
+        		break;
 			case DEL:
 				if (isLoggedIn) {
-            		printf("Message Number: ");
-            		fgets(msgNum, 9, stdin);
-            		snprintf(buffer, sizeof(buffer), "DEL\n%s\n%s", loggedInUsername.c_str(), msgNum);
-       			} else {
             		printf("Please login first.\n");
-       			}
+            		continue;
+            	}
+            	printf("Message Number: ");
+            	fgets(msgNum, 9, stdin);
+            	snprintf(buffer, sizeof(buffer), "DEL\n%s\n%s", loggedInUsername.c_str(), msgNum);
        			break;
 			case QUIT:
-			
+				// should never be reached;
 				break;
 			}
 		
@@ -300,4 +300,76 @@ inline bool isInteger(const std::string & s)
 void printUsage()
 {
 	printf("Usage: <twmailer-server [host/ip (default: 127.0.0.1)] [port]>\n");
+}
+
+int getch()
+{
+    int ch;
+    // https://man7.org/linux/man-pages/man3/termios.3.html
+    struct termios t_old, t_new;
+
+    // https://man7.org/linux/man-pages/man3/termios.3.html
+    // tcgetattr() gets the parameters associated with the object referred
+    //   by fd and stores them in the termios structure referenced by
+    //   termios_p
+    tcgetattr(STDIN_FILENO, &t_old);
+    
+    // copy old to new to have a base for setting c_lflags
+    t_new = t_old;
+
+    // https://man7.org/linux/man-pages/man3/termios.3.html
+    //
+    // ICANON Enable canonical mode (described below).
+    //   * Input is made available line by line (max 4096 chars).
+    //   * In noncanonical mode input is available immediately.
+    //
+    // ECHO   Echo input characters.
+    t_new.c_lflag &= ~(ICANON | ECHO);
+    
+    // sets the attributes
+    // TCSANOW: the change occurs immediately.
+    tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
+
+    ch = getchar();
+
+    // reset stored attributes
+    tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
+
+    return ch;
+}
+
+const std::string getpass()
+{
+    int show_asterisk = 0;
+
+    const char BACKSPACE = 127;
+    const char RETURN = 10;
+
+    unsigned char ch = 0;
+    std::string password;
+
+    while ((ch = getch()) != RETURN)
+    {
+        if (ch == BACKSPACE)
+        {
+            if (password.length() != 0)
+            {
+                if (show_asterisk)
+                {
+                    printf("\b \b"); // backslash: \b
+                }
+                password.resize(password.length() - 1);
+            }
+        }
+        else
+        {
+            password += ch;
+            if (show_asterisk)
+            {
+                printf("*");
+            }
+        }
+    }
+    printf("\n");
+    return password;
 }

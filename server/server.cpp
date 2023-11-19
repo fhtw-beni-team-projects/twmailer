@@ -71,7 +71,7 @@ std::string getSha1(const std::string& p_arg);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
-std::string cmdLOGIN(std::vector<std::string>& received);
+std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername);
 std::string cmdSEND(std::vector<std::string>& received, const std::string& loggedInUsername);
 std::string cmdLIST(std::vector<std::string>& received, const std::string& loggedInUsername);
 std::string cmdREAD(std::vector<std::string>& received, const std::string& loggedInUsername);
@@ -260,12 +260,6 @@ void *clientCommunication(void *data)
 			lines.push_back(line);
 		}
 
-		std::vector<std::string> received;
-		
-		while (std::getline(ss, line, '\n')) {
-    		received.push_back(line);
-		}
-
 		enum commands cmd;
 
 		// can't wait for reflections (maybe c++26?)
@@ -281,26 +275,29 @@ void *clientCommunication(void *data)
 
 		switch (cmd) {
 		case LOGIN:
-			loggedInUsername = cmdLOGIN(received);
+			response = cmdLOGIN(lines, loggedInUsername);
 			break;
 		case SEND:
-			if (received.size() < 5 || received.back().compare(".") != 0) {
+			if (lines.size() < 5 || lines.back().compare(".") != 0) {
             	incomplete_message = buffer;
             	continue; 
         		}
-        	response = cmdSEND(received, loggedInUsername);
+        	response = cmdSEND(lines, loggedInUsername);
         	break;
 		case LIST:
-			response = cmdLIST(received, loggedInUsername);
+			response = cmdLIST(lines, loggedInUsername);
 			break;
 		case READ:
-			response = cmdREAD(received, loggedInUsername);
+			response = cmdREAD(lines, loggedInUsername);
 			break;
 		case DEL:
-			response = cmdDEL(received, loggedInUsername);
+			response = cmdDEL(lines, loggedInUsername);
 			break;
 		case QUIT:
 			break;
+		default:
+			// invalid command
+			response = "ERR\n";
 		}
 
 		if (send(*current_socket, response.c_str(), response.size(), 0) == -1) {
@@ -397,7 +394,7 @@ inline void exiting()
 	printf("Saving...	\n");
 }
 
-std::string cmdLOGIN(std::vector<std::string>& received)
+std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername)
 {
 	if (received.size() < 3) {
         return "ERR\n";
@@ -423,19 +420,20 @@ std::string cmdLOGIN(std::vector<std::string>& received)
         return "ERR\n";
     }
 
-	std::string ldapBindUser = "uid=" + received[1] + ",ou=people,dc=technikum-wien,dc=at";
-    std::string ldapBindPassword = received[2];
+	std::string ldapBindUser = "uid=" + received.at(1) + ",ou=people,dc=technikum-wien,dc=at";
+    std::string ldapBindPassword = received.at(2);
 
 	BerValue bindCredentials;
-    bindCredentials.bv_val = (char*)ldapBindPassword.c_str();
+    bindCredentials.bv_val = (char*) ldapBindPassword.c_str();
     bindCredentials.bv_len = ldapBindPassword.length();
-    rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, NULL);
+    BerValue *servercredp;
+    rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, &servercredp);
     if (rc != LDAP_SUCCESS) {
         ldap_unbind_ext_s(ldapHandle, NULL, NULL);
         return "ERR\n"; 
     }
-	
 
+    loggedInUsername = received.at(1);
 	ldap_unbind_ext_s(ldapHandle, NULL, NULL);
 	
 	return "OK\n";
