@@ -452,6 +452,7 @@ std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUs
     }
 
     loggedInUsername = received.at(1);
+    ip_ban::getInstance().success(ip);
 	ldap_unbind_ext_s(ldapHandle, NULL, NULL);
 	
 	return "OK\n";

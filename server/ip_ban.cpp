@@ -14,7 +14,7 @@ ip_ban::~ip_ban()
 {
 	if (this->file.empty())
 		return;
-	
+
 	json jsonfile = this->ban_list;
 
 	std::ofstream ofs(this->file, std::ofstream::out | std::ofstream::trunc);
@@ -33,7 +33,6 @@ void ip_ban::loadFile(fs::path file)
 
 void ip_ban::failedAttempt(std::string username, std::string ip)
 {
-	printf("%s\n", username.c_str());
 	std::unique_lock<std::shared_mutex> lock(this->m_ban);
 
 	std::map<std::string, std::pair<std::map<std::string, ushort>, time_t>>::iterator it = this->ban_list.insert({ip, {{}, 0}}).first;
@@ -43,6 +42,12 @@ void ip_ban::failedAttempt(std::string username, std::string ip)
 		}
 		(*it).second.second = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) + BAN_TIME; // set unban time to current time + BAN_TIME seconds
 	}
+}
+
+void ip_ban::success(std::string ip)
+{
+	std::unique_lock<std::shared_mutex> lock(this->m_ban);
+	this->ban_list.erase(ip);
 }
 
 bool ip_ban::checkBanned(std::string ip)

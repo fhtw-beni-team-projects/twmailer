@@ -32,6 +32,7 @@ public:
 	void loadFile(fs::path file);
 
 	void failedAttempt(std::string username, std::string ip);
+	void success(std::string ip);
 	bool checkBanned(std::string ip);
 
 protected:
