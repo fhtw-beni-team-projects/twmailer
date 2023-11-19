@@ -1,3 +1,4 @@
+#include "ip_ban.h"
 #include "user.h"
 #include "user_handler.h"
 
@@ -71,7 +72,7 @@ std::string getSha1(const std::string& p_arg);
 void *clientCommunication(void *data);
 void signalHandler(int sig);
 
-std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername);
+std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername, const std::string& ip);
 std::string cmdSEND(std::vector<std::string>& received, const std::string& loggedInUsername);
 std::string cmdLIST(std::vector<std::string>& received, const std::string& loggedInUsername);
 std::string cmdREAD(std::vector<std::string>& received, const std::string& loggedInUsername);
@@ -80,6 +81,13 @@ std::string cmdDEL(std::vector<std::string>& received, const std::string& logged
 
 inline void exiting();
 inline std::string read_file(std::string_view path);
+
+struct args
+{
+    int socket;
+    std::string ip;
+    fs::path spool_dir;
+};
 
 int main (int argc, char* argv[])
 {
@@ -105,6 +113,8 @@ int main (int argc, char* argv[])
 	fs::create_directory(spool_dir/"messages");
 
 	user_handler::getInstance().setSpoolDir(spool_dir);
+
+	ip_ban::getInstance().loadFile(spool_dir / "bans.json");
 
 	std::atexit(exiting);
 
@@ -181,7 +191,7 @@ int main (int argc, char* argv[])
 				 ntohs(cliaddress.sin_port));
 		// clientCommunication(&new_socket); // returnValue can be ignored
 		pthread_t tid;
-		pthread_create(&tid, NULL, clientCommunication, (void *)new int(new_socket));
+		pthread_create(&tid, NULL, clientCommunication, static_cast<void *>(new args{new_socket, inet_ntoa(cliaddress.sin_addr), spool_dir}));
 		threads.push_back(tid);
 		new_socket = -1;
 	}
@@ -219,9 +229,12 @@ void printUsage()
 
 void *clientCommunication(void *data)
 {
+	args* args = (struct args*) data;
+
 	char buffer[BUF];
 	int size;
-	int *current_socket = (int *)data;
+	int *current_socket = &args->socket;
+	std::string ip = args->ip;
 
 	std::string incomplete_message = "";
 
@@ -275,7 +288,7 @@ void *clientCommunication(void *data)
 
 		switch (cmd) {
 		case LOGIN:
-			response = cmdLOGIN(lines, loggedInUsername);
+			response = cmdLOGIN(lines, loggedInUsername, ip);
 			break;
 		case SEND:
 			if (lines.size() < 5 || lines.back().compare(".") != 0) {
@@ -320,7 +333,7 @@ void *clientCommunication(void *data)
 		*current_socket = -1;
 	}
 
-	delete(current_socket);
+	delete(args);
 	return NULL;
 }
 
@@ -394,7 +407,7 @@ inline void exiting()
 	printf("Saving...	\n");
 }
 
-std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername)
+std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUsername, const std::string& ip)
 {
 	if (received.size() < 3) {
         return "ERR\n";
@@ -428,8 +441,14 @@ std::string cmdLOGIN(std::vector<std::string>& received, std::string& loggedInUs
     bindCredentials.bv_len = ldapBindPassword.length();
     rc = ldap_sasl_bind_s(ldapHandle, ldapBindUser.c_str(), LDAP_SASL_SIMPLE, &bindCredentials, NULL, NULL, NULL);
     if (rc != LDAP_SUCCESS) {
+    	ip_ban::getInstance().failedAttempt(received.at(1), ip);
         ldap_unbind_ext_s(ldapHandle, NULL, NULL);
-        return "ERR\n"; 
+        return "ERR\n";
+    }
+
+    if (ip_ban::getInstance().checkBanned(ip)) {
+		ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+		return "ERR\n";
     }
 
     loggedInUsername = received.at(1);

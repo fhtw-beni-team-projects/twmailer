@@ -1,5 +1,4 @@
 #include "mail.h"
-#include <mutex>
 
 mail::mail(std::string filename, std::string subject, std::string sender) :
 	filename(filename),

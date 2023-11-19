@@ -10,7 +10,7 @@ BUILD_DIR = build
 SOURCES_CLIENT = client.cpp
 OBJS_CLIENT = $(addprefix $(BUILD_DIR)/,$(SOURCES_CLIENT:.cpp=.o))
 
-SOURCES_SERVER = server.cpp user.cpp user_handler.cpp mail.cpp
+SOURCES_SERVER = server.cpp user.cpp user_handler.cpp mail.cpp ip_ban.cpp
 OBJS_SERVER = $(addprefix $(BUILD_DIR)/,$(SOURCES_SERVER:.cpp=.o))
 
 all: $(BUILD_DIR) $(TARGET)
