@@ -58,7 +58,7 @@ bool abortRequested = false;
 int create_socket = -1;
 int new_socket = -1;
 
-std::vector<pthread_t> threads;
+// std::vector<pthread_t> threads;
 
 void printUsage();
 inline bool isInteger(const std::string & s);
@@ -192,7 +192,8 @@ int main (int argc, char* argv[])
 		// clientCommunication(&new_socket); // returnValue can be ignored
 		pthread_t tid;
 		pthread_create(&tid, NULL, clientCommunication, static_cast<void *>(new args{new_socket, inet_ntoa(cliaddress.sin_addr), spool_dir}));
-		threads.push_back(tid);
+		// threads.push_back(tid);
+		pthread_detach(tid);
 		new_socket = -1;
 	}
 
@@ -399,9 +400,9 @@ std::string getSha1(const std::string& str)
 
 inline void exiting()
 {
-    for (auto& thread : threads) {
+    /*for (auto& thread : threads) {
     	pthread_join(thread, NULL);
-    }
+    }*/
 
 	user_handler::getInstance().saveAll();
 	printf("Saving...	\n");
